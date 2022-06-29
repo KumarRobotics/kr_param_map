@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>param_env</name>
+  <version>1.0.0</version>
+  <description>The parameterized map package</description>
+
+  <maintainer email="yuweiwu@seas.upenn.edu">Yuwei Wu</maintainer>
+
+  <author>Yuwei Wu</author>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+
+</package>

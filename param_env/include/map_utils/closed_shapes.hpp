@@ -50,7 +50,7 @@ namespace param_env
     ~Polygon() {}
 
     // check if the point is inside the Polygon
-    bool is_inside(const Eigen::Vector2d &pt, 
+    bool isInside(const Eigen::Vector2d &pt, 
                    const double epsilon = 1.0e-6)
     {
       Eigen::Vector2d p_, n_;
@@ -85,7 +85,7 @@ namespace param_env
     ~Ellipse() {}
 
     // Check if the point is inside
-    bool is_inside(const Eigen::Vector2d &pt)
+    bool isInside(const Eigen::Vector2d &pt)
     {
       return (E_.inverse() * (pt - d_)).norm() <= 1.0;
     }
@@ -112,7 +112,7 @@ namespace param_env
     ~Polyhedron() {}
 
     // check if the point is inside the Polyhedron
-    bool is_inside(Eigen::Vector3d &pt,
+    bool isInside(Eigen::Vector3d &pt,
                    const double epsilon = 1.0e-6)
     {
       Eigen::Vector3d p_, n_;
@@ -129,7 +129,7 @@ namespace param_env
     }
 
     // for point cloud visualization
-    void get_vis_pts(pcl::PointCloud<pcl::PointXYZ> &clouds, 
+    void getVisPts(pcl::PointCloud<pcl::PointXYZ> &clouds, 
                      const double res = 0.1)
     {
 
@@ -139,7 +139,7 @@ namespace param_env
 
     //randomly generate a convex polytope
     //given the center point and the boundary
-    void random_init(Eigen::Vector3d &cpt,
+    void randomInit(Eigen::Vector3d &cpt,
                      Eigen::Vector3d &bound)
     {
 
@@ -219,7 +219,7 @@ namespace param_env
     ~Cylinder() {}
 
     // Check if the point is inside
-    bool is_inside(const Eigen::Vector3d &pt)
+    bool isInside(const Eigen::Vector3d &pt)
     {
       if (pt(2) > cpt_(2) * 2)
       {
@@ -249,7 +249,7 @@ namespace param_env
     ~Ellipsoid() {}
 
     // Check if the point is inside
-    bool is_inside(const Eigen::Vector3d &pt)
+    bool isInside(const Eigen::Vector3d &pt)
     {
       return (E_.inverse() * (pt - d_)).norm() <= 1.0;
     }

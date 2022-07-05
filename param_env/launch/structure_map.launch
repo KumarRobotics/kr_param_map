@@ -20,7 +20,7 @@
     <param name="map/frame_id"     value="$(arg map_frame_id)" />
 
     <!-- total obstacle ratios -->
-    <param name="map/cylinder_ratio" value="0.50" type="double"/>
+    <param name="map/cylinder_ratio" value="0.001" type="double"/>
     <param name="map/circle_ratio"   value="0.0" type="double"/>
     <param name="map/gate_ratio"     value="0.0" type="double"/>
     <param name="map/ellip_ratio"    value="0.0" type="double"/>

@@ -16,7 +16,9 @@
 #include <Eigen/Eigen>
 #include <random>
 
-#include <struct_utils/closed_shapes.hpp>
+#include <map_utils/closed_shapes.hpp>
+#include <map_utils/grid_map.hpp>
+
 
 using namespace std;
 
@@ -30,14 +32,10 @@ pcl::PointCloud<pcl::PointXYZ> cloudMap;
 
 random_device rd;
 default_random_engine eng(rd());
-uniform_real_distribution<double> rand_x;
-uniform_real_distribution<double> rand_y;
-uniform_real_distribution<double> rand_z;
+
 uniform_real_distribution<double> rand_theta;
 
 double _resolution;
-
-Eigen::Vector3d _map_size, _map_origin, _min_range, _max_range;
 
 int _all_grids, _cylinder_grids, _circle_grids, _ellip_grids, _gate_grids, _poly_grids;
 
@@ -48,31 +46,8 @@ uniform_real_distribution<double> rand_w;
 uniform_real_distribution<double> rand_cw;
 uniform_real_distribution<double> rand_radiu;
 
-
-// for ellipsoid
-
-// for polys
-
-double getGridVal(double p)
-{
-
-  return floor(p / _resolution) * _resolution + _resolution / 2.0;
-}
-
-//
-bool isInMap(Eigen::Vector3d pt)
-{
-
-  if (pt(0) < _min_range(0) || pt(0) >= _max_range(0) || 
-      pt(1) < _min_range(1) || pt(1) >= _max_range(1) || 
-      pt(2) < _min_range(2) || pt(2) >= _max_range(2) ) 
-  {
-    return false;
-  }
-   
-  return true;
-}
-
+param_env::GridMap _grid_map;
+param_env::MapParams mpa;
 
 
 void RandomMapGenerate()
@@ -83,48 +58,59 @@ void RandomMapGenerate()
   pt.orientation.w = 1.0;
   int cur_grids;
 
-  // center position
-  rand_x = uniform_real_distribution<double>(_min_range(0), _max_range(0));
-  rand_y = uniform_real_distribution<double>(_min_range(1), _max_range(1));
-  rand_z = uniform_real_distribution<double>(0.1 + _min_range(2), _max_range(2));
+  _grid_map.setUniRand(eng);
+
   rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
 
 
   rand_w = uniform_real_distribution<double>(_w1, _w2);
+  rand_h = uniform_real_distribution<double>(0.1, mpa.map_size_(2));
   rand_cw = uniform_real_distribution<double>(_w1, _w3);
   rand_radiu = uniform_real_distribution<double>(_w1, _w4);
+
+  Eigen::Vector3d cp, cpt, cpt_if;
 
 
   // generate cylinders
   cur_grids = 0;
   while (cur_grids < _cylinder_grids)
   {
-    double x, y, w, h;
-    x = rand_x(eng);
-    y = rand_y(eng);
-    h = std::min(_max_range(2), 2 * rand_z(eng));
-    w = rand_cw(eng);
+    
 
-    x = getGridVal(x);
-    y = getGridVal(y);
+    _grid_map.getUniRandPos(cp);
+
+    double w, h;
+    h = rand_h(eng);
+    w = rand_cw(eng);
 
     int heiNum = ceil(h / _resolution);
     int widNum = ceil(w / _resolution);
 
+    // std::cout <<  "x : " << x << std::endl;
+    // std::cout <<  "y : " << y << std::endl;
     for (int r = -widNum; r < widNum; r++)
     {
       for (int s = -widNum; s < widNum; s++)
       {
-        //@yuwei: to make it as cylinders
         if (r * r + s * s > (widNum * widNum))
         {
           continue;
         }
-        for (int t = -1.0; t < heiNum; t++)
+        for (int t = - heiNum / 2; t < heiNum / 2; t++)
         {
-          pt_random.x = x + (r + 0.5) * _resolution + 1e-2;
-          pt_random.y = y + (s + 0.5) * _resolution + 1e-2;
-          pt_random.z = (t + 0.5) * _resolution + 1e-2;
+          cpt << cp + Eigen::Vector3d(r * _resolution, 
+                                      s * _resolution,
+                                      t * _resolution);
+          
+          if (!_grid_map.isInMap(cpt))
+          {
+            continue;
+          }
+
+          pt_random.x = cpt(0);
+          pt_random.y = cpt(1);
+          pt_random.z = cpt(2);
+
           cloudMap.points.push_back(pt_random);
           cur_grids += 1;
         }
@@ -137,12 +123,7 @@ void RandomMapGenerate()
   // generate circle obs
   while (cur_grids < _circle_grids)
   {
-    double x, y, z;
-    x = rand_x(eng);
-    y = rand_y(eng);
-    z = rand_z(eng);
-
-    Eigen::Vector3d translate(x, y, z);
+    _grid_map.getUniRandPos(cp);
 
     double theta = rand_theta(eng);
     Eigen::Matrix3d rotate;
@@ -159,8 +140,6 @@ void RandomMapGenerate()
 
 
     // draw a circle centered at (x,y,z)
-    Eigen::Vector3d cpt, center_pt;
-    center_pt << getGridVal(x), getGridVal(y), getGridVal(z);
 
     for (double angle = 0.0; angle < 2 * M_PI; angle += _resolution / 2)
     {
@@ -168,8 +147,6 @@ void RandomMapGenerate()
       cpt(1) = radius1 * cos(angle);
       cpt(2) = radius2 * sin(angle);
 
-      // inflate
-      Eigen::Vector3d cpt_if;
       for (int ifx = -0; ifx <= widNum1 / 2; ++ifx)
       {
         for (int ify = -0; ify <= widNum2 / 2; ++ify)
@@ -178,15 +155,18 @@ void RandomMapGenerate()
           {
             cpt_if = cpt + Eigen::Vector3d(ifx * _resolution, ify * _resolution,
                                            ifz * _resolution);
-            cpt_if = rotate * cpt_if + center_pt;
+            cpt_if = rotate * cpt_if + cp;
+
             pt_random.x = cpt_if(0);
             pt_random.y = cpt_if(1);
             pt_random.z = cpt_if(2);
 
-            if (!isInMap(cpt_if))
+            if (!_grid_map.isInMap(cpt_if))
             {
               continue;
             }
+
+            
 
             cloudMap.push_back(pt_random);
             cur_grids += 1;
@@ -201,12 +181,8 @@ void RandomMapGenerate()
   // generate circle obs
   while (cur_grids < _gate_grids)
   {
-    double x, y, z;
-    x = rand_x(eng);
-    y = rand_y(eng);
-    z = rand_z(eng);
 
-    Eigen::Vector3d translate(x, y, z);
+    _grid_map.getUniRandPos(cp);
 
     double theta = rand_theta(eng);
     Eigen::Matrix3d rotate;
@@ -220,11 +196,6 @@ void RandomMapGenerate()
     
     // outdoor box: infl * radNum2 * radNum2
     // indoor box: infl * radNum1 * radNum1
-
-    // draw a box centered at (x,y,z)
-    Eigen::Vector3d cpt, center_pt;
-    center_pt << getGridVal(x), getGridVal(y), getGridVal(z);
-
     for (int r = -widNum / 2.0; r < widNum / 2.0; r++)
     {
       for (int s = -radNum2; s < radNum2; s++)
@@ -236,11 +207,11 @@ void RandomMapGenerate()
             continue;
           }          
 
-          cpt << center_pt + rotate * Eigen::Vector3d(r * _resolution, 
-                                                      s * _resolution,
-                                                      t * _resolution);
+          cpt << cp + rotate * Eigen::Vector3d(r * _resolution, 
+                                               s * _resolution,
+                                               t * _resolution);
 
-          if (!isInMap(cpt))
+          if (!_grid_map.isInMap(cpt))
           {
             continue;
           }
@@ -263,8 +234,8 @@ void RandomMapGenerate()
   cur_grids = 0;
   while (cur_grids < _ellip_grids)
   {
-    Eigen::Vector3d center_pt;
-    center_pt << rand_x(eng), rand_y(eng), rand_z(eng);
+
+    _grid_map.getUniRandPos(cp);
 
     Eigen::Vector3d euler_angle;
     euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
@@ -287,7 +258,7 @@ void RandomMapGenerate()
 
     Eigen::Matrix3d E = R * coeff_mat * R.transpose();
     param_env::Ellipsoid ellip(E, center_pt);
-    Eigen::Vector3d cpt;
+
     //std::cout <<  "center_pt is : " << center_pt << std::endl;
     for (int r = -l1_num; r < l1_num; r++)
     {
@@ -297,17 +268,17 @@ void RandomMapGenerate()
         {
           cpt = R * Eigen::Vector3d(r * _resolution,
                                     s * _resolution,
-                                    t * _resolution) +  center_pt;
+                                    t * _resolution) +  cp;
           //std::cout << cpt << std::endl;
-          if (!ellip.is_inside(cpt) | !isInMap(cpt))
+          if (!ellip.isInside(cpt) | !_grid_map.isInMap(cpt))
           {
-            //std::cout <<  "ellip.is_inside is false " << std::endl;
+            //std::cout <<  "ellip.isInside is false " << std::endl;
             continue;
           }
 
-          pt_random.x = getGridVal(cpt(0));
-          pt_random.y = getGridVal(cpt(1));
-          pt_random.z = getGridVal(cpt(2));
+          pt_random.x = cpt(0);
+          pt_random.y = cpt(1);
+          pt_random.z = cpt(2);
 
           cloudMap.points.push_back(pt_random);
           cur_grids += 1;
@@ -321,8 +292,7 @@ void RandomMapGenerate()
   cur_grids = 0;
   while (cur_grids < _poly_grids)
   {
-    Eigen::Vector3d center_pt;
-    center_pt << rand_x(eng), rand_y(eng), rand_z(eng);
+    _grid_map.getUniRandPos(cp);
 
     Eigen::Vector3d bound;
     bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
@@ -332,13 +302,9 @@ void RandomMapGenerate()
     int l2_num = ceil(bound(1) / _resolution);
     int l3_num = ceil(bound(2) / _resolution);
 
-
     param_env::Polyhedron poly;
-    
-    poly.random_init(center_pt, bound);
+    poly.randomInit(cp, bound);
 
-    Eigen::Vector3d cpt;
-    //std::cout <<  "center_pt is : " << center_pt << std::endl;
     for (int r = -l1_num; r < l1_num; r++)
     {
       for (int s = -l2_num; s < l2_num; s++)
@@ -347,17 +313,17 @@ void RandomMapGenerate()
         {
           cpt = Eigen::Vector3d(r * _resolution,
                                 s * _resolution,
-                                t * _resolution) +  center_pt;
+                                t * _resolution) +  cp;
           //std::cout << cpt << std::endl;
-          if (!poly.is_inside(cpt) | !isInMap(cpt))
+          if (!poly.isInside(cpt) | !_grid_map.isInMap(cpt))
           {
-            //std::cout <<  "ellip.is_inside is false " << std::endl;
+            //std::cout <<  "ellip.isInside is false " << std::endl;
             continue;
           }
 
-          pt_random.x = getGridVal(cpt(0));
-          pt_random.y = getGridVal(cpt(1));
-          pt_random.z = getGridVal(cpt(2));
+          pt_random.x = cpt(0);
+          pt_random.y = cpt(1);
+          pt_random.z = cpt(2);
 
           cloudMap.points.push_back(pt_random);
           cur_grids += 1;
@@ -400,24 +366,25 @@ int main(int argc, char **argv)
 
   _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
 
-  nh.param("map/x_size", _map_size(0), 40.0);
-  nh.param("map/y_size", _map_size(1), 40.0);
-  nh.param("map/z_size", _map_size(2), 5.0);
 
-  nh.param("map/x_origin", _map_origin(0), -20.0);
-  nh.param("map/y_origin", _map_origin(1), -20.0);
-  nh.param("map/z_origin", _map_origin(2), 0.0);
+  nh.param("map/x_size", mpa.map_size_(0), 40.0);
+  nh.param("map/y_size", mpa.map_size_(1), 40.0);
+  nh.param("map/z_size", mpa.map_size_(2), 5.0);
+  nh.param("map/x_origin", mpa.map_origin_(0), -20.0);
+  nh.param("map/y_origin", mpa.map_origin_(1), -20.0);
+  nh.param("map/z_origin", mpa.map_origin_(2), 0.0);
+  nh.param("map/resolution", mpa.resolution_, 0.1);
 
-  nh.param("map/resolution", _resolution, 0.1);
+
   nh.param("map/frame_id", _frame_id, string("map"));
+
 
 
   // space volume
   _all_grids = _map_size(0) * _map_size(1) * _map_size(2) / std::pow(_resolution, 3);
 
   // low and high bound of the center position
-  _min_range = _map_origin;
-  _max_range = _map_origin + _map_size;
+  _grid_map.init(mpa);
 
 
   double cylinder_ratio, circle_ratio, gate_ratio, ellip_ratio, poly_ratio;
@@ -442,6 +409,7 @@ int main(int argc, char **argv)
 
 
   ros::Duration(0.5).sleep();
+
 
   RandomMapGenerate();
 

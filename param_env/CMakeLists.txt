@@ -26,7 +26,7 @@ include_directories(
   ${PCL_INCLUDE_DIRS}
 )
 
-add_executable (structure_map src/structure_map.cpp )
+add_executable (structure_map src/structure_map.cpp)
 target_link_libraries(structure_map
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES})

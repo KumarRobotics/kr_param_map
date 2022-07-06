@@ -40,16 +40,14 @@ namespace param_env
     std::vector<double> occupancy_buffer_; // 0 is free, 1 is occupied
     double clamp_min_log_ = 0.01;
     double clamp_max_log_ = 0.99;
+    double min_thrd_ = 0.80;
     MapParams mp_;
 
     //get random position in the map
     uniform_real_distribution<double> rand_x_;
     uniform_real_distribution<double> rand_y_;
     uniform_real_distribution<double> rand_z_;
-    default_random_engine eng_;
-
-
-
+    default_random_engine eng_; 
 
   public:
     GridMap() = default;
@@ -71,6 +69,13 @@ namespace param_env
       }
 
       mp_.map_grid_size_ytz_ = mp_.map_grid_size_(1) * mp_.map_grid_size_(2);
+
+      int buffer_size = mp_.map_grid_size_(0) * mp_.map_grid_size_ytz_;
+      cout << "buffer size: " << buffer_size << endl;
+      occupancy_buffer_.resize(buffer_size);
+      fill(occupancy_buffer_.begin(), occupancy_buffer_.end(), clamp_min_log_);
+
+
     }
 
     void getMapParams(MapParams &mpa)
@@ -105,7 +110,7 @@ namespace param_env
           }
     }
 
-    void setOccupancy(const Eigen::Vector3d &pos)
+    void setOcc(const Eigen::Vector3d &pos)
     {
       Eigen::Vector3i id;
       posToIndex(pos, id);
@@ -114,6 +119,21 @@ namespace param_env
 
       occupancy_buffer_[getBufferCnt(id)] = clamp_max_log_;
     }
+
+
+    int isOcc(const Eigen::Vector3d &pos)
+    {
+      Eigen::Vector3i id;
+      posToIndex(pos, id);
+      if (!isInMap(id)){
+        return -1;
+      }
+        
+      // (x, y, z) -> x*ny*nz + y*nz + z
+      return occupancy_buffer_[getBufferCnt(id)] > min_thrd_ ? 1 : 0;
+    }
+
+
 
     void setUniRand(default_random_engine &eng){
 
@@ -154,7 +174,7 @@ namespace param_env
     bool isInMap(const Eigen::Vector3i &id)
     {
       Eigen::Vector3d pos;
-      indexToPos(pos, idx);
+      indexToPos(id, pos);
       return isInMap(pos);
     }
 
@@ -196,15 +216,15 @@ namespace param_env
 
     int getBufferCnt(const Eigen::Vector3i &id)
     {
-
+      //x*ny*nz + y*nz + z
       return id(0) * mp_.map_grid_size_ytz_ + id(1) * mp_.map_grid_size_(2) + id(2);
     }
 
     int getBufferCnt(const Eigen::Vector3d &pos)
     {
-      Eigen::Vector3i idx;
-      posToIndex(pos, idx);
-      return getBufferCnt(idx);
+      Eigen::Vector3i id;
+      posToIndex(pos, id);
+      return getBufferCnt(id);
     }
   };
 

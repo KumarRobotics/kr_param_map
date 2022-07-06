@@ -19,7 +19,6 @@
 #include <map_utils/closed_shapes.hpp>
 #include <map_utils/grid_map.hpp>
 
-
 using namespace std;
 
 vector<int> pointIdxRadiusSearch;
@@ -42,42 +41,47 @@ int _all_grids, _cylinder_grids, _circle_grids, _ellip_grids, _gate_grids, _poly
 double _w1, _w2, _w3, _w4;
 
 // for normal cylinders
-uniform_real_distribution<double> rand_w;
-uniform_real_distribution<double> rand_cw;
-uniform_real_distribution<double> rand_radiu;
+uniform_real_distribution<double> rand_w, rand_h, rand_cw, rand_radiu;
 
 param_env::GridMap _grid_map;
 param_env::MapParams mpa;
 
-
-void RandomMapGenerate()
+void updatePt(Eigen::Vector3d &pt)
 {
+  _grid_map.setOcc(pt);
 
   pcl::PointXYZ pt_random;
-  geometry_msgs::Pose pt;
-  pt.orientation.w = 1.0;
+  pt_random.x = pt(0);
+  pt_random.y = pt(1);
+  pt_random.z = pt(2);
+
+  cloudMap.points.push_back(pt_random);
+}
+
+
+void RandomUniMapGenerate()
+{
+  
   int cur_grids;
+  Eigen::Vector3d bound;
+  Eigen::Vector3d cpt, ob_pt; // center points, object points
+  int widNum1, widNum2, widNum3;
+  Eigen::Matrix3d R;
 
   _grid_map.setUniRand(eng);
 
   rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
-
-
   rand_w = uniform_real_distribution<double>(_w1, _w2);
   rand_h = uniform_real_distribution<double>(0.1, mpa.map_size_(2));
   rand_cw = uniform_real_distribution<double>(_w1, _w3);
   rand_radiu = uniform_real_distribution<double>(_w1, _w4);
 
-  Eigen::Vector3d cp, cpt, cpt_if;
-
-
   // generate cylinders
   cur_grids = 0;
   while (cur_grids < _cylinder_grids)
   {
-    
 
-    _grid_map.getUniRandPos(cp);
+    _grid_map.getUniRandPos(cpt);
 
     double w, h;
     h = rand_h(eng);
@@ -96,22 +100,19 @@ void RandomMapGenerate()
         {
           continue;
         }
-        for (int t = - heiNum / 2; t < heiNum / 2; t++)
+        for (int t = -heiNum / 2; t < heiNum / 2; t++)
         {
-          cpt << cp + Eigen::Vector3d(r * _resolution, 
-                                      s * _resolution,
-                                      t * _resolution);
-          
-          if (!_grid_map.isInMap(cpt))
+          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
+                                        s * _resolution,
+                                        t * _resolution);
+
+          if (_grid_map.isOcc(ob_pt) != 0)
           {
             continue;
           }
 
-          pt_random.x = cpt(0);
-          pt_random.y = cpt(1);
-          pt_random.z = cpt(2);
-
-          cloudMap.points.push_back(pt_random);
+          updatePt(ob_pt);
+          
           cur_grids += 1;
         }
       }
@@ -123,54 +124,46 @@ void RandomMapGenerate()
   // generate circle obs
   while (cur_grids < _circle_grids)
   {
-    _grid_map.getUniRandPos(cp);
+    _grid_map.getUniRandPos(cpt);
 
     double theta = rand_theta(eng);
-    Eigen::Matrix3d rotate;
-    rotate << cos(theta), -sin(theta), 0.0,
-        sin(theta), cos(theta), 0.0,
-        0, 0, 1;
+    double width = 0.1 + 0.2 * rand_radiu(eng);
 
-    double radius1 = rand_radiu(eng);
-    double radius2 = rand_radiu(eng);
+    bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
 
-    int widNum1  = ceil(rand_w(eng) / _resolution);
-    int widNum2  = ceil(rand_w(eng) / _resolution);
-    int widNum3  = ceil(rand_w(eng) / _resolution);
+    param_env::CircleGate cir_gate(cpt, bound, theta);
 
+    // get bounding box
+    widNum1 = ceil((bound(0) + bound(1)) / _resolution);
+    widNum2 = widNum1;
+    widNum3 = ceil(bound(2) / _resolution);
 
-    // draw a circle centered at (x,y,z)
-
-    for (double angle = 0.0; angle < 2 * M_PI; angle += _resolution / 2)
+    // outdoor box: infl * radNum2 * radNum2
+    // indoor box: infl * radNum1 * radNum1
+    for (int r = -widNum1; r < widNum1; r++)
     {
-      cpt(0) = 0.0;
-      cpt(1) = radius1 * cos(angle);
-      cpt(2) = radius2 * sin(angle);
-
-      for (int ifx = -0; ifx <= widNum1 / 2; ++ifx)
+      for (int s = -widNum2; s < widNum2; s++)
       {
-        for (int ify = -0; ify <= widNum2 / 2; ++ify)
+        for (int t = -widNum3; t < widNum3; t++)
         {
-          for (int ifz = -0; ifz <= widNum3 / 2; ++ifz)
+
+          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
+                                        s * _resolution,
+                                        t * _resolution);
+
+          if (_grid_map.isOcc(ob_pt) != 0)
           {
-            cpt_if = cpt + Eigen::Vector3d(ifx * _resolution, ify * _resolution,
-                                           ifz * _resolution);
-            cpt_if = rotate * cpt_if + cp;
-
-            pt_random.x = cpt_if(0);
-            pt_random.y = cpt_if(1);
-            pt_random.z = cpt_if(2);
-
-            if (!_grid_map.isInMap(cpt_if))
-            {
-              continue;
-            }
-
-            
-
-            cloudMap.push_back(pt_random);
-            cur_grids += 1;
+            continue;
           }
+
+          if (!cir_gate.isInside(ob_pt))
+          {
+            continue;
+          }
+
+          updatePt(ob_pt);
+
+          cur_grids += 1;
         }
       }
     }
@@ -182,150 +175,146 @@ void RandomMapGenerate()
   while (cur_grids < _gate_grids)
   {
 
-    _grid_map.getUniRandPos(cp);
+    _grid_map.getUniRandPos(cpt);
 
     double theta = rand_theta(eng);
-    Eigen::Matrix3d rotate;
-    rotate << cos(theta), -sin(theta), 0.0,
-              sin(theta), cos(theta), 0.0,
-              0, 0, 1;
+    double width = 0.1 + 0.2 * rand_radiu(eng);
 
-    int radNum1 = ceil(rand_radiu(eng) / _resolution);
-    int radNum2 = radNum1 + ceil(rand_w(eng) / _resolution);
-    int widNum  = ceil(rand_w(eng) / _resolution);
-    
+    bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
+
+    param_env::RectGate rect_gate(cpt, bound, theta);
+
+    // get bounding box
+    widNum1 = ceil((bound(0) + bound(1)) / _resolution);
+    widNum2 = widNum1;
+    widNum3 = ceil(bound(2) / _resolution);
+
     // outdoor box: infl * radNum2 * radNum2
     // indoor box: infl * radNum1 * radNum1
-    for (int r = -widNum / 2.0; r < widNum / 2.0; r++)
+    for (int r = -widNum1; r < widNum1; r++)
     {
-      for (int s = -radNum2; s < radNum2; s++)
+      for (int s = -widNum2; s < widNum2; s++)
       {
-        for (int t = -radNum2; t < radNum2; t++)
+        for (int t = -widNum3; t < widNum3; t++)
         {
-          if (abs(t) <= radNum1 & abs(s) <= radNum1)
-          {
-            continue;
-          }          
 
-          cpt << cp + rotate * Eigen::Vector3d(r * _resolution, 
-                                               s * _resolution,
-                                               t * _resolution);
+          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
+                                        s * _resolution,
+                                        t * _resolution);
 
-          if (!_grid_map.isInMap(cpt))
+          if (!rect_gate.isInside(ob_pt))
           {
             continue;
           }
 
+          if (_grid_map.isOcc(ob_pt) != 0)
+          {
+            continue;
+          }
 
-          pt_random.x = cpt(0);
-          pt_random.y = cpt(1);
-          pt_random.z = cpt(2);
+          updatePt(ob_pt);
 
-          cloudMap.points.push_back(pt_random);
           cur_grids += 1;
         }
       }
     }
   }
   _gate_grids = cur_grids;
-
-
+  //std::cout <<  "_ellip_grids " << _ellip_grids << std::endl;
   // generate ellipsoid
   cur_grids = 0;
   while (cur_grids < _ellip_grids)
   {
-
-    _grid_map.getUniRandPos(cp);
+    _grid_map.getUniRandPos(cpt);
 
     Eigen::Vector3d euler_angle;
     euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
+    R = param_env::eulerToRot(euler_angle);
 
-    double l1, l2, l3;
-    l1 = rand_radiu(eng);
-    l2 = rand_radiu(eng);
-    l3 = rand_radiu(eng);
+    bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
 
-    int l1_num = ceil(l1 / _resolution);
-    int l2_num = ceil(l2 / _resolution);
-    int l3_num = ceil(l3 / _resolution);
-
-    Eigen::Matrix3d R = param_env::eulerToRot(euler_angle);
+    widNum1 = ceil(bound(0) / _resolution);
+    widNum2 = ceil(bound(1) / _resolution);
+    widNum3 = ceil(bound(2) / _resolution);
 
     Eigen::Matrix3d coeff_mat;
-    coeff_mat << l1, 0.0, 0.0,
-                 0.0, l2, 0.0,
-                 0.0, 0.0, l3;
+    coeff_mat << bound(0), 0.0, 0.0,
+                  0.0, bound(1), 0.0,
+                  0.0, 0.0, bound(2);
 
     Eigen::Matrix3d E = R * coeff_mat * R.transpose();
-    param_env::Ellipsoid ellip(E, center_pt);
+    param_env::Ellipsoid ellip(E, cpt);
 
-    //std::cout <<  "center_pt is : " << center_pt << std::endl;
-    for (int r = -l1_num; r < l1_num; r++)
+    for (int r = -widNum1; r < widNum1; r++)
     {
-      for (int s = -l2_num; s < l2_num; s++)
+      for (int s = -widNum2; s < widNum2; s++)
       {
-        for (int t = -l3_num; t < l3_num; t++)
+        for (int t = -widNum3; t < widNum3; t++)
         {
-          cpt = R * Eigen::Vector3d(r * _resolution,
-                                    s * _resolution,
-                                    t * _resolution) +  cp;
-          //std::cout << cpt << std::endl;
-          if (!ellip.isInside(cpt) | !_grid_map.isInMap(cpt))
+          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
+                                        s * _resolution,
+                                        t * _resolution);
+
+          if (_grid_map.isOcc(ob_pt) != 0)
           {
-            //std::cout <<  "ellip.isInside is false " << std::endl;
             continue;
           }
 
-          pt_random.x = cpt(0);
-          pt_random.y = cpt(1);
-          pt_random.z = cpt(2);
+          if (!ellip.isInside(ob_pt))
+          {
+            // std::cout <<  "ellip.isInside is false " << std::endl;
+            continue;
+          }
 
-          cloudMap.points.push_back(pt_random);
+          updatePt(ob_pt);
+
           cur_grids += 1;
         }
       }
     }
   }
-
-
+  //std::cout <<  "_poly_grids " << _poly_grids << std::endl;
   // generate polytopes
   cur_grids = 0;
   while (cur_grids < _poly_grids)
   {
-    _grid_map.getUniRandPos(cp);
+    _grid_map.getUniRandPos(cpt);
 
-    Eigen::Vector3d bound;
     bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
 
-
-    int l1_num = ceil(bound(0) / _resolution);
-    int l2_num = ceil(bound(1) / _resolution);
-    int l3_num = ceil(bound(2) / _resolution);
+    widNum1 = ceil(bound(0) / _resolution);
+    widNum2 = ceil(bound(1) / _resolution);
+    widNum3 = ceil(bound(2) / _resolution);
 
     param_env::Polyhedron poly;
-    poly.randomInit(cp, bound);
+    poly.randomInit(cpt, bound);
 
-    for (int r = -l1_num; r < l1_num; r++)
+    for (int r = -widNum1; r < widNum1; r++)
     {
-      for (int s = -l2_num; s < l2_num; s++)
+      for (int s = -widNum2; s < widNum2; s++)
       {
-        for (int t = -l3_num; t < l3_num; t++)
+        for (int t = -widNum3; t < widNum3; t++)
         {
-          cpt = Eigen::Vector3d(r * _resolution,
-                                s * _resolution,
-                                t * _resolution) +  cp;
-          //std::cout << cpt << std::endl;
-          if (!poly.isInside(cpt) | !_grid_map.isInMap(cpt))
+
+          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
+                                         s * _resolution,
+                                         t * _resolution);
+
+          if (_grid_map.isOcc(ob_pt) != 0)
           {
-            //std::cout <<  "ellip.isInside is false " << std::endl;
+            //std::cout <<  "isOcc " << std::endl;
+            continue;
+          }
+         
+          // std::cout << ob_pt << std::endl;
+          if (!poly.isInside(ob_pt))
+          {
+            //std::cout <<  "poly.isInside is false " << std::endl;
             continue;
           }
 
-          pt_random.x = cpt(0);
-          pt_random.y = cpt(1);
-          pt_random.z = cpt(2);
+          updatePt(ob_pt);
 
-          cloudMap.points.push_back(pt_random);
           cur_grids += 1;
         }
       }
@@ -338,14 +327,12 @@ void RandomMapGenerate()
 
   std::cout << "Finished generate random map !" << std::endl;
   std::cout << "The space ratio for cylinders, circles, gates, ellipsoids, and polytopes are: " << std::endl;
-  std::cout<<setiosflags(ios::fixed)<<setprecision(4)<<std::endl;
-  std::cout << float(_cylinder_grids)/float(_all_grids)<< " ";
-  std::cout << float(_circle_grids)/float(_all_grids)<< " ";
-  std::cout << float(_gate_grids)/float(_all_grids)<< " ";
-  std::cout << float(_ellip_grids)/float(_all_grids)<< " ";
-  std::cout << float(_poly_grids)/float(_all_grids) << std::endl;
-
-
+  std::cout << setiosflags(ios::fixed) << setprecision(4) << std::endl;
+  std::cout << float(_cylinder_grids) / float(_all_grids) << " ";
+  std::cout << float(_circle_grids) / float(_all_grids) << " ";
+  std::cout << float(_gate_grids) / float(_all_grids) << " ";
+  std::cout << float(_ellip_grids) / float(_all_grids) << " ";
+  std::cout << float(_poly_grids) / float(_all_grids) << std::endl;
 }
 
 int i = 0;
@@ -366,7 +353,6 @@ int main(int argc, char **argv)
 
   _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
 
-
   nh.param("map/x_size", mpa.map_size_(0), 40.0);
   nh.param("map/y_size", mpa.map_size_(1), 40.0);
   nh.param("map/z_size", mpa.map_size_(2), 5.0);
@@ -375,17 +361,14 @@ int main(int argc, char **argv)
   nh.param("map/z_origin", mpa.map_origin_(2), 0.0);
   nh.param("map/resolution", mpa.resolution_, 0.1);
 
-
   nh.param("map/frame_id", _frame_id, string("map"));
 
-
-
   // space volume
-  _all_grids = _map_size(0) * _map_size(1) * _map_size(2) / std::pow(_resolution, 3);
+  _resolution = mpa.resolution_;
+  _all_grids = mpa.map_size_(0) * mpa.map_size_(1) * mpa.map_size_(2) / std::pow(mpa.resolution_, 3);
 
   // low and high bound of the center position
   _grid_map.init(mpa);
-
 
   double cylinder_ratio, circle_ratio, gate_ratio, ellip_ratio, poly_ratio;
   // radio of obstacles
@@ -407,11 +390,9 @@ int main(int argc, char **argv)
   nh.param("params/w3", _w3, 2.0);
   nh.param("params/w4", _w4, 3.0);
 
-
   ros::Duration(0.5).sleep();
 
-
-  RandomMapGenerate();
+  RandomUniMapGenerate();
 
   ros::Rate loop_rate(10.0);
 

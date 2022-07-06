@@ -29,11 +29,17 @@ namespace param_env
     return R;
   }
 
+  class GeoMap
+  {
+    
+  }
+
+
+
+
 
 
   /* ---------------- 2D shapes ---------------- */
-
-
   class Polygon
   {
   private:
@@ -256,6 +262,106 @@ namespace param_env
 
   };
 
+
+  class CircleGate
+  {
+  private:
+
+    double theta_;
+    Eigen::Vector3d cpt_;
+    Eigen::Vector3d rect_; //width, l1, l2
+    Eigen::Matrix3d R_;
+
+  public:
+
+    CircleGate() = default;
+    
+    CircleGate(const Eigen::Vector3d &cpt, const Eigen::Vector3d &rect, const double &theta) 
+    : cpt_(cpt), rect_(rect), theta_(theta) {
+      R_ << cos(theta), -sin(theta), 0.0,
+            sin(theta), cos(theta), 0.0,
+            0, 0, 1;
+    }
+
+    ~CircleGate() {}
+
+    // Check if the point is inside
+    bool isInside(const Eigen::Vector3d &pt)
+    {
+ 
+      Eigen::Vector3d diff = R_.transpose() * (pt - cpt_);
+
+      if (abs(diff(0)) >= rect_(0))
+      {
+        return false;
+      }
+
+      if (diff(1)*diff(1)/(rect_(1)*rect_(1)) + diff(2)*diff(2)/(rect_(2)*rect_(2)) >= 1.0)
+      {
+        return false;
+      }
+
+      double a = rect_(1) - rect_(0);
+      double b = rect_(2) - rect_(0);
+
+      if (diff(1)*diff(1)/(a*a) + diff(2)*diff(2)/(b*b) <= 1.0)
+      {
+        return false;
+      }
+
+      return true;
+    }
+
+  };
+  class RectGate
+  {
+
+  private:
+
+    double theta_;
+    Eigen::Vector3d cpt_;
+    Eigen::Vector3d rect_; //width, l1, l2
+    Eigen::Matrix3d R_;
+
+  public:
+
+    RectGate() = default;
+    
+    RectGate(const Eigen::Vector3d &cpt, const Eigen::Vector3d &rect, const double &theta) 
+    : cpt_(cpt), rect_(rect), theta_(theta) {
+      R_ << cos(theta), -sin(theta), 0.0,
+            sin(theta), cos(theta), 0.0,
+            0, 0, 1;
+    }
+
+    ~RectGate() {}
+
+    // Check if the point is inside
+    bool isInside(const Eigen::Vector3d &pt)
+    {
+ 
+      Eigen::Vector3d diff = R_.transpose() * (pt - cpt_);
+
+      if (abs(diff(2)) >= rect_(2) ||
+          abs(diff(1)) >= rect_(1) ||
+          abs(diff(0)) >= rect_(0))
+      {
+        return false;
+      }
+      
+      if (abs(diff(2)) <= rect_(2) - rect_(0) &&
+          abs(diff(1)) <= rect_(1) - rect_(0))
+      {
+        return false;
+      }
+
+      return true;
+    }
+
+
+  };
+
+  
 
 }
 

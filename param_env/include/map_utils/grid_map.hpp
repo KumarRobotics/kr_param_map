@@ -9,9 +9,6 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-#include "geo_utils/quickhull.hpp"
-#include "geo_utils/geo_utils.hpp"
-
 namespace param_env
 {
 

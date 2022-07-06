@@ -12,20 +12,20 @@
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
-
+#include <std_msgs/Float32.h>
 #include <Eigen/Eigen>
 #include <random>
 
 #include <map_utils/closed_shapes.hpp>
 #include <map_utils/grid_map.hpp>
+#include <map_utils/geo_map.hpp>
 
 using namespace std;
 
-vector<int> pointIdxRadiusSearch;
-vector<float> pointRadiusSquaredDistance;
-
 std::string _frame_id;
-ros::Publisher _all_map_cloud_pub;
+ros::Publisher  _all_map_cloud_pub;
+ros::Subscriber _res_sub;
+
 sensor_msgs::PointCloud2 globalMap_pcd;
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
 
@@ -44,30 +44,102 @@ double _w1, _w2, _w3, _w4;
 uniform_real_distribution<double> rand_w, rand_h, rand_cw, rand_radiu;
 
 param_env::GridMap _grid_map;
+param_env::GeoMap _geo_map;
 param_env::MapParams mpa;
 
-void updatePt(Eigen::Vector3d &pt)
+
+template<class T>
+int updatePts(T &geo_rep)
 {
-  _grid_map.setOcc(pt);
+  int cur_grids = 0;
 
-  pcl::PointXYZ pt_random;
-  pt_random.x = pt(0);
-  pt_random.y = pt(1);
-  pt_random.z = pt(2);
+  Eigen::Vector3d bound, cpt, ob_pt;
+  geo_rep.getBd(bound);
+  geo_rep.getCenter(cpt);
 
-  cloudMap.points.push_back(pt_random);
+  int widNum1 = ceil(bound(0) / _resolution);
+  int widNum2 = ceil(bound(1) / _resolution);
+  int widNum3 = ceil(bound(2) / _resolution);
+
+
+  for (int r = -widNum1; r < widNum1; r++)
+  {
+    for (int s = -widNum2; s < widNum2; s++)
+    {
+      for (int t = -widNum3; t < widNum3; t++)
+      {
+        ob_pt = cpt + Eigen::Vector3d(r * _resolution,
+                                      s * _resolution,
+                                      t * _resolution);
+
+        if (_grid_map.isOcc(ob_pt) != 0)
+        {
+          continue;
+        }
+
+        if (!geo_rep.isInside(ob_pt))
+        {
+          continue;
+        }
+        _grid_map.setOcc(ob_pt);
+
+        pcl::PointXYZ pt_random;
+        pt_random.x = ob_pt(0);
+        pt_random.y = ob_pt(1);
+        pt_random.z = ob_pt(2);
+
+        cloudMap.points.push_back(pt_random);
+        
+        cur_grids += 1;
+      }
+    }
+  }  
+
+  return cur_grids;
 }
 
 
+template<class T>
+void traversePts(std::vector<T> &geo_reps)
+{
+  for(auto &geo_rep : geo_reps)
+  {
+    updatePts(geo_rep);
+  }
+
+}
+
+void ResetRes(const std_msgs::Float32 &msg){
+
+  mpa.resolution_ = msg.data;
+  _grid_map.init(mpa);
+
+  cloudMap.clear();
+
+  std::vector<param_env::Polyhedron> polyhedron;
+  std::vector<param_env::Cylinder> cylinder;
+  std::vector<param_env::Ellipsoid> ellipsoid;
+  std::vector<param_env::CircleGate> circle_gate;
+  std::vector<param_env::RectGate> rect_gate; 
+
+  _geo_map.getPolyhedron(polyhedron);
+  _geo_map.getCylinder(cylinder);
+  _geo_map.getEllipsoid(ellipsoid);
+  _geo_map.getCircleGate(circle_gate);
+  _geo_map.getRectGate(rect_gate);
+
+  traversePts(polyhedron);
+  traversePts(cylinder);
+  traversePts(ellipsoid);
+  traversePts(circle_gate);
+  traversePts(rect_gate);
+}
+
 void RandomUniMapGenerate()
 {
-  
-  int cur_grids;
   Eigen::Vector3d bound;
-  Eigen::Vector3d cpt, ob_pt; // center points, object points
-  int widNum1, widNum2, widNum3;
-  Eigen::Matrix3d R;
-
+  Eigen::Vector3d cpt; // center points, object points
+  
   _grid_map.setUniRand(eng);
 
   rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
@@ -76,47 +148,22 @@ void RandomUniMapGenerate()
   rand_cw = uniform_real_distribution<double>(_w1, _w3);
   rand_radiu = uniform_real_distribution<double>(_w1, _w4);
 
+
   // generate cylinders
-  cur_grids = 0;
+  int cur_grids = 0;
   while (cur_grids < _cylinder_grids)
   {
-
     _grid_map.getUniRandPos(cpt);
 
     double w, h;
     h = rand_h(eng);
     w = rand_cw(eng);
 
-    int heiNum = ceil(h / _resolution);
-    int widNum = ceil(w / _resolution);
+    param_env::Cylinder cylinder(cpt, w, h);
 
-    // std::cout <<  "x : " << x << std::endl;
-    // std::cout <<  "y : " << y << std::endl;
-    for (int r = -widNum; r < widNum; r++)
-    {
-      for (int s = -widNum; s < widNum; s++)
-      {
-        if (r * r + s * s > (widNum * widNum))
-        {
-          continue;
-        }
-        for (int t = -heiNum / 2; t < heiNum / 2; t++)
-        {
-          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
-                                        s * _resolution,
-                                        t * _resolution);
+    cur_grids += updatePts(cylinder);
+    _geo_map.add(cylinder);
 
-          if (_grid_map.isOcc(ob_pt) != 0)
-          {
-            continue;
-          }
-
-          updatePt(ob_pt);
-          
-          cur_grids += 1;
-        }
-      }
-    }
   }
   _cylinder_grids = cur_grids;
 
@@ -133,40 +180,10 @@ void RandomUniMapGenerate()
 
     param_env::CircleGate cir_gate(cpt, bound, theta);
 
-    // get bounding box
-    widNum1 = ceil((bound(0) + bound(1)) / _resolution);
-    widNum2 = widNum1;
-    widNum3 = ceil(bound(2) / _resolution);
-
     // outdoor box: infl * radNum2 * radNum2
     // indoor box: infl * radNum1 * radNum1
-    for (int r = -widNum1; r < widNum1; r++)
-    {
-      for (int s = -widNum2; s < widNum2; s++)
-      {
-        for (int t = -widNum3; t < widNum3; t++)
-        {
-
-          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
-                                        s * _resolution,
-                                        t * _resolution);
-
-          if (_grid_map.isOcc(ob_pt) != 0)
-          {
-            continue;
-          }
-
-          if (!cir_gate.isInside(ob_pt))
-          {
-            continue;
-          }
-
-          updatePt(ob_pt);
-
-          cur_grids += 1;
-        }
-      }
-    }
+    cur_grids += updatePts(cir_gate);
+    _geo_map.add(cir_gate);
   }
   _circle_grids = cur_grids;
 
@@ -184,141 +201,41 @@ void RandomUniMapGenerate()
 
     param_env::RectGate rect_gate(cpt, bound, theta);
 
-    // get bounding box
-    widNum1 = ceil((bound(0) + bound(1)) / _resolution);
-    widNum2 = widNum1;
-    widNum3 = ceil(bound(2) / _resolution);
-
-    // outdoor box: infl * radNum2 * radNum2
-    // indoor box: infl * radNum1 * radNum1
-    for (int r = -widNum1; r < widNum1; r++)
-    {
-      for (int s = -widNum2; s < widNum2; s++)
-      {
-        for (int t = -widNum3; t < widNum3; t++)
-        {
-
-          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
-                                        s * _resolution,
-                                        t * _resolution);
-
-          if (!rect_gate.isInside(ob_pt))
-          {
-            continue;
-          }
-
-          if (_grid_map.isOcc(ob_pt) != 0)
-          {
-            continue;
-          }
-
-          updatePt(ob_pt);
-
-          cur_grids += 1;
-        }
-      }
-    }
+    cur_grids += updatePts(rect_gate);
+    _geo_map.add(rect_gate);
   }
   _gate_grids = cur_grids;
+
+
   //std::cout <<  "_ellip_grids " << _ellip_grids << std::endl;
   // generate ellipsoid
   cur_grids = 0;
   while (cur_grids < _ellip_grids)
   {
     _grid_map.getUniRandPos(cpt);
-
     Eigen::Vector3d euler_angle;
     euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
-    R = param_env::eulerToRot(euler_angle);
-
     bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
 
-    widNum1 = ceil(bound(0) / _resolution);
-    widNum2 = ceil(bound(1) / _resolution);
-    widNum3 = ceil(bound(2) / _resolution);
+    param_env::Ellipsoid ellip;
+    ellip.init(cpt, bound, euler_angle);
 
-    Eigen::Matrix3d coeff_mat;
-    coeff_mat << bound(0), 0.0, 0.0,
-                  0.0, bound(1), 0.0,
-                  0.0, 0.0, bound(2);
-
-    Eigen::Matrix3d E = R * coeff_mat * R.transpose();
-    param_env::Ellipsoid ellip(E, cpt);
-
-    for (int r = -widNum1; r < widNum1; r++)
-    {
-      for (int s = -widNum2; s < widNum2; s++)
-      {
-        for (int t = -widNum3; t < widNum3; t++)
-        {
-          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
-                                        s * _resolution,
-                                        t * _resolution);
-
-          if (_grid_map.isOcc(ob_pt) != 0)
-          {
-            continue;
-          }
-
-          if (!ellip.isInside(ob_pt))
-          {
-            // std::cout <<  "ellip.isInside is false " << std::endl;
-            continue;
-          }
-
-          updatePt(ob_pt);
-
-          cur_grids += 1;
-        }
-      }
-    }
+    cur_grids += updatePts(ellip);
+    _geo_map.add(ellip);
   }
-  //std::cout <<  "_poly_grids " << _poly_grids << std::endl;
+
   // generate polytopes
   cur_grids = 0;
   while (cur_grids < _poly_grids)
   {
     _grid_map.getUniRandPos(cpt);
-
     bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
-
-    widNum1 = ceil(bound(0) / _resolution);
-    widNum2 = ceil(bound(1) / _resolution);
-    widNum3 = ceil(bound(2) / _resolution);
 
     param_env::Polyhedron poly;
     poly.randomInit(cpt, bound);
 
-    for (int r = -widNum1; r < widNum1; r++)
-    {
-      for (int s = -widNum2; s < widNum2; s++)
-      {
-        for (int t = -widNum3; t < widNum3; t++)
-        {
-
-          ob_pt = cpt + Eigen::Vector3d(r * _resolution,
-                                         s * _resolution,
-                                         t * _resolution);
-
-          if (_grid_map.isOcc(ob_pt) != 0)
-          {
-            //std::cout <<  "isOcc " << std::endl;
-            continue;
-          }
-         
-          // std::cout << ob_pt << std::endl;
-          if (!poly.isInside(ob_pt))
-          {
-            //std::cout <<  "poly.isInside is false " << std::endl;
-            continue;
-          }
-
-          updatePt(ob_pt);
-
-          cur_grids += 1;
-        }
-      }
-    }
+    cur_grids += updatePts(poly);
+    _geo_map.add(poly);
   }
 
   cloudMap.width = cloudMap.points.size();
@@ -352,6 +269,8 @@ int main(int argc, char **argv)
   ros::NodeHandle nh("~");
 
   _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
+  _res_sub = nh.subscribe("change_res", 10, ResetRes);
+
 
   nh.param("map/x_size", mpa.map_size_(0), 40.0);
   nh.param("map/y_size", mpa.map_size_(1), 40.0);

@@ -29,16 +29,6 @@ namespace param_env
     return R;
   }
 
-  class GeoMap
-  {
-    
-  }
-
-
-
-
-
-
   /* ---------------- 2D shapes ---------------- */
   class Polygon
   {
@@ -108,6 +98,8 @@ namespace param_env
 
     // h-representation = [outter_normal^T, pt^T]^T
     Eigen::MatrixXd hPoly_;
+    Eigen::Vector3d bd_; // the bounding as -+ d
+    Eigen::Vector3d cpt_;
 
   public:
 
@@ -141,12 +133,10 @@ namespace param_env
 
     }
 
-
-
     //randomly generate a convex polytope
     //given the center point and the boundary
     void randomInit(Eigen::Vector3d &cpt,
-                     Eigen::Vector3d &bound)
+                    Eigen::Vector3d &bound)
     {
 
       Eigen::Matrix3Xd mesh;
@@ -201,10 +191,22 @@ namespace param_env
 
       hPoly_ = hPoly;
       //std::cout << "hPoly_ is  " << hPoly_ << std::endl;
+      bd_  = bound;
+      cpt_ = cpt;
 
     }
 
-              
+    void getBd(Eigen::Vector3d &bd)
+    {
+      bd = bd_;
+    }
+
+    void getCenter(Eigen::Vector3d &cpt)
+    {
+      cpt = cpt_;
+    }
+
+
   };
 
 
@@ -213,28 +215,44 @@ namespace param_env
   {
   private:
   
-    Eigen::Vector3d cpt_; // 3*3 matrix
+    Eigen::Vector3d cpt_;
     double r_;
+    double h_;
+    Eigen::Vector3d bd_; // the bounding as -+ d
 
   public:
 
     Cylinder() = default;
     
-    Cylinder(const Eigen::Vector3d &cpt, double &r) : cpt_(cpt), r_(r) {}
+    Cylinder(const Eigen::Vector3d &cpt, double &r, double &h) : cpt_(cpt), r_(r), h_(h) {
+      bd_ << r, r, h;
+    }
 
     ~Cylinder() {}
 
     // Check if the point is inside
     bool isInside(const Eigen::Vector3d &pt)
     {
-      if (pt(2) > cpt_(2) * 2)
+      if ( abs(pt(2) - cpt_(2)) >= 0.5 * h_)
       {
         return false;
-      }else if ( ((pt - cpt_).head(2)).norm() > r_)
+      }
+      
+      if (((pt - cpt_).head(2)).norm() > r_)
       {
         return false;
       }
       return true;
+    }
+
+    void getBd(Eigen::Vector3d &bd)
+    {
+      bd = bd_;
+    }
+
+    void getCenter(Eigen::Vector3d &cpt)
+    {
+      cpt = cpt_;
     }
 
   };
@@ -245,6 +263,7 @@ namespace param_env
   
     Eigen::Matrix3d E_; // 3*3 matrix
     Eigen::Vector3d d_;
+    Eigen::Vector3d bd_; // the bounding as -+ d
 
   public:
 
@@ -260,6 +279,39 @@ namespace param_env
       return (E_.inverse() * (pt - d_)).norm() <= 1.0;
     }
 
+
+    //init a ellipsoid
+    //given the center point and the boundary
+    void init(Eigen::Vector3d &cpt,
+              Eigen::Vector3d &bound,
+              Eigen::Vector3d &euler)
+    {   
+
+      Eigen::Matrix3d R = param_env::eulerToRot(euler);
+      Eigen::Matrix3d coeff_mat;
+      coeff_mat << bound(0), 0.0, 0.0,
+                    0.0, bound(1), 0.0,
+                    0.0, 0.0, bound(2);
+
+      E_  = R * coeff_mat * R.transpose();
+      d_  = cpt;
+      bd_ = bound;
+
+    }
+
+
+
+    void getBd(Eigen::Vector3d &bd)
+    {
+      bd = bd_;
+    }
+
+    void getCenter(Eigen::Vector3d &cpt)
+    {
+      cpt = d_;
+    }
+
+
   };
 
 
@@ -271,16 +323,22 @@ namespace param_env
     Eigen::Vector3d cpt_;
     Eigen::Vector3d rect_; //width, l1, l2
     Eigen::Matrix3d R_;
+    Eigen::Vector3d bd_; // the bounding as -+ d
 
   public:
 
     CircleGate() = default;
     
     CircleGate(const Eigen::Vector3d &cpt, const Eigen::Vector3d &rect, const double &theta) 
-    : cpt_(cpt), rect_(rect), theta_(theta) {
+    {
+      cpt_ = cpt;
+      rect_ = rect;
+      theta_ = theta;
+      
       R_ << cos(theta), -sin(theta), 0.0,
             sin(theta), cos(theta), 0.0,
             0, 0, 1;
+      bd_ << rect(0) + rect(1), rect(0) + rect(1), rect(2);
     }
 
     ~CircleGate() {}
@@ -312,26 +370,42 @@ namespace param_env
       return true;
     }
 
+    void getBd(Eigen::Vector3d &bd)
+    {
+      bd = bd_;
+    }
+
+    void getCenter(Eigen::Vector3d &cpt)
+    {
+      cpt = cpt_;
+    }
+
   };
   class RectGate
   {
-
   private:
 
     double theta_;
     Eigen::Vector3d cpt_;
     Eigen::Vector3d rect_; //width, l1, l2
     Eigen::Matrix3d R_;
+    Eigen::Vector3d bd_; // the bounding as -+ d
 
   public:
 
     RectGate() = default;
     
     RectGate(const Eigen::Vector3d &cpt, const Eigen::Vector3d &rect, const double &theta) 
-    : cpt_(cpt), rect_(rect), theta_(theta) {
+    {
+      cpt_ = cpt;
+      rect_ = rect;
+      theta_ = theta;
+
       R_ << cos(theta), -sin(theta), 0.0,
             sin(theta), cos(theta), 0.0,
             0, 0, 1;
+
+      bd_ << rect(0) + rect(1), rect(0) + rect(1), rect(2);
     }
 
     ~RectGate() {}
@@ -358,6 +432,15 @@ namespace param_env
       return true;
     }
 
+    void getBd(Eigen::Vector3d &bd)
+    {
+      bd = bd_;
+    }
+
+    void getCenter(Eigen::Vector3d &cpt)
+    {
+      cpt = cpt_;
+    }
 
   };
 

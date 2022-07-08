@@ -118,6 +118,10 @@ namespace param_env
     void getRectGate(std::vector<RectGate> &geo_reps){geo_reps = rect_gate_;}
 
 
+    typedef shared_ptr<GeoMap> Ptr;
+  
+
+
   };
 
 }

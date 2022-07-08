@@ -29,228 +29,22 @@ ros::Subscriber _res_sub;
 sensor_msgs::PointCloud2 globalMap_pcd;
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
 
-random_device rd;
-default_random_engine eng(rd());
-
-uniform_real_distribution<double> rand_theta;
-
 double _resolution;
 
-int _all_grids, _cylinder_grids, _circle_grids, _ellip_grids, _gate_grids, _poly_grids;
+param_env::StructMapGenerator _struct_map_gen;
 
-double _w1, _w2, _w3, _w4;
+void resCallback(const std_msgs::Float32 &msg){
 
-// for normal cylinders
-uniform_real_distribution<double> rand_w, rand_h, rand_cw, rand_radiu;
-
-param_env::GridMap _grid_map;
-param_env::GeoMap _geo_map;
-param_env::MapParams mpa;
-
-
-template<class T>
-int updatePts(T &geo_rep)
-{
-  int cur_grids = 0;
-
-  Eigen::Vector3d bound, cpt, ob_pt;
-  geo_rep.getBd(bound);
-  geo_rep.getCenter(cpt);
-
-  int widNum1 = ceil(bound(0) / _resolution);
-  int widNum2 = ceil(bound(1) / _resolution);
-  int widNum3 = ceil(bound(2) / _resolution);
-
-
-  for (int r = -widNum1; r < widNum1; r++)
-  {
-    for (int s = -widNum2; s < widNum2; s++)
-    {
-      for (int t = -widNum3; t < widNum3; t++)
-      {
-        ob_pt = cpt + Eigen::Vector3d(r * _resolution,
-                                      s * _resolution,
-                                      t * _resolution);
-
-        if (_grid_map.isOcc(ob_pt) != 0)
-        {
-          continue;
-        }
-
-        if (!geo_rep.isInside(ob_pt))
-        {
-          continue;
-        }
-        _grid_map.setOcc(ob_pt);
-
-        pcl::PointXYZ pt_random;
-        pt_random.x = ob_pt(0);
-        pt_random.y = ob_pt(1);
-        pt_random.z = ob_pt(2);
-
-        cloudMap.points.push_back(pt_random);
-        
-        cur_grids += 1;
-      }
-    }
-  }  
-
-  return cur_grids;
-}
-
-
-template<class T>
-void traversePts(std::vector<T> &geo_reps)
-{
-  for(auto &geo_rep : geo_reps)
-  {
-    updatePts(geo_rep);
-  }
+  _struct_map_gen.resetRes(msg.data);
+  _struct_map_gen.getPoints(cloudMap);
 
 }
 
-void ResetRes(const std_msgs::Float32 &msg){
-
-  mpa.resolution_ = msg.data;
-  _grid_map.init(mpa);
-
-  cloudMap.clear();
-
-  std::vector<param_env::Polyhedron> polyhedron;
-  std::vector<param_env::Cylinder> cylinder;
-  std::vector<param_env::Ellipsoid> ellipsoid;
-  std::vector<param_env::CircleGate> circle_gate;
-  std::vector<param_env::RectGate> rect_gate; 
-
-  _geo_map.getPolyhedron(polyhedron);
-  _geo_map.getCylinder(cylinder);
-  _geo_map.getEllipsoid(ellipsoid);
-  _geo_map.getCircleGate(circle_gate);
-  _geo_map.getRectGate(rect_gate);
-
-  traversePts(polyhedron);
-  traversePts(cylinder);
-  traversePts(ellipsoid);
-  traversePts(circle_gate);
-  traversePts(rect_gate);
-}
-
-void RandomUniMapGenerate()
-{
-  Eigen::Vector3d bound;
-  Eigen::Vector3d cpt; // center points, object points
-  
-  _grid_map.setUniRand(eng);
-
-  rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
-  rand_w = uniform_real_distribution<double>(_w1, _w2);
-  rand_h = uniform_real_distribution<double>(0.1, mpa.map_size_(2));
-  rand_cw = uniform_real_distribution<double>(_w1, _w3);
-  rand_radiu = uniform_real_distribution<double>(_w1, _w4);
 
 
-  // generate cylinders
-  int cur_grids = 0;
-  while (cur_grids < _cylinder_grids)
-  {
-    _grid_map.getUniRandPos(cpt);
-
-    double w, h;
-    h = rand_h(eng);
-    w = rand_cw(eng);
-
-    param_env::Cylinder cylinder(cpt, w, h);
-
-    cur_grids += updatePts(cylinder);
-    _geo_map.add(cylinder);
-
-  }
-  _cylinder_grids = cur_grids;
-
-  cur_grids = 0;
-  // generate circle obs
-  while (cur_grids < _circle_grids)
-  {
-    _grid_map.getUniRandPos(cpt);
-
-    double theta = rand_theta(eng);
-    double width = 0.1 + 0.2 * rand_radiu(eng);
-
-    bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
-
-    param_env::CircleGate cir_gate(cpt, bound, theta);
-
-    // outdoor box: infl * radNum2 * radNum2
-    // indoor box: infl * radNum1 * radNum1
-    cur_grids += updatePts(cir_gate);
-    _geo_map.add(cir_gate);
-  }
-  _circle_grids = cur_grids;
-
-  cur_grids = 0;
-  // generate circle obs
-  while (cur_grids < _gate_grids)
-  {
-
-    _grid_map.getUniRandPos(cpt);
-
-    double theta = rand_theta(eng);
-    double width = 0.1 + 0.2 * rand_radiu(eng);
-
-    bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
-
-    param_env::RectGate rect_gate(cpt, bound, theta);
-
-    cur_grids += updatePts(rect_gate);
-    _geo_map.add(rect_gate);
-  }
-  _gate_grids = cur_grids;
 
 
-  //std::cout <<  "_ellip_grids " << _ellip_grids << std::endl;
-  // generate ellipsoid
-  cur_grids = 0;
-  while (cur_grids < _ellip_grids)
-  {
-    _grid_map.getUniRandPos(cpt);
-    Eigen::Vector3d euler_angle;
-    euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
-    bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
 
-    param_env::Ellipsoid ellip;
-    ellip.init(cpt, bound, euler_angle);
-
-    cur_grids += updatePts(ellip);
-    _geo_map.add(ellip);
-  }
-
-  // generate polytopes
-  cur_grids = 0;
-  while (cur_grids < _poly_grids)
-  {
-    _grid_map.getUniRandPos(cpt);
-    bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
-
-    param_env::Polyhedron poly;
-    poly.randomInit(cpt, bound);
-
-    cur_grids += updatePts(poly);
-    _geo_map.add(poly);
-  }
-
-  cloudMap.width = cloudMap.points.size();
-  cloudMap.height = 1;
-  cloudMap.is_dense = true;
-
-  std::cout << "Finished generate random map !" << std::endl;
-  std::cout << "The space ratio for cylinders, circles, gates, ellipsoids, and polytopes are: " << std::endl;
-  std::cout << setiosflags(ios::fixed) << setprecision(4) << std::endl;
-  std::cout << float(_cylinder_grids) / float(_all_grids) << " ";
-  std::cout << float(_circle_grids) / float(_all_grids) << " ";
-  std::cout << float(_gate_grids) / float(_all_grids) << " ";
-  std::cout << float(_ellip_grids) / float(_all_grids) << " ";
-  std::cout << float(_poly_grids) / float(_all_grids) << std::endl;
-}
 
 int i = 0;
 void pubSensedPoints()
@@ -269,8 +63,7 @@ int main(int argc, char **argv)
   ros::NodeHandle nh("~");
 
   _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
-  _res_sub = nh.subscribe("change_res", 10, ResetRes);
-
+  _res_sub = nh.subscribe("change_res", 10, resCallback);
 
   nh.param("map/x_size", mpa.map_size_(0), 40.0);
   nh.param("map/y_size", mpa.map_size_(1), 40.0);

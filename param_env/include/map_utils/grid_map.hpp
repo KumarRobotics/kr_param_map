@@ -6,9 +6,6 @@
 #include <map>
 #include <string>
 
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-
 namespace param_env
 {
 
@@ -223,6 +220,10 @@ namespace param_env
       posToIndex(pos, id);
       return getBufferCnt(id);
     }
+
+    typedef shared_ptr<GridMap> Ptr;
+  
+
   };
 
 }

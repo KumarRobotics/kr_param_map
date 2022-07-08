@@ -1,0 +1,45 @@
+<launch>
+  <arg name="debug" default="false"/>
+  <!--<arg name="debug_valgrind" default="false"/>-->
+
+  <arg name="prefix" value="" unless="$(arg debug)"/>
+  <arg name="prefix" value="gdb -ex run --args" if="$(arg debug)"/>
+
+  <node pkg="mpl_test_node"
+    type="map_planner_node"
+    name="test_primitive"
+    launch-prefix="$(arg prefix)"
+    output="screen">
+    <param name="file" value="$(find mpl_test_node)/maps/simple/simple.bag"/>
+    <param name="topic" value="/voxel_map"/>
+    <!-- Set start and goal -->
+    <param name="goal_x" value="5.0"/>
+    <param name="goal_y" value="6.6"/>
+    <param name="goal_z" value="2.0"/>
+    <param name="start_vx" value="0.0"/>
+    <param name="start_vy" value="0.0"/>
+    <param name="start_vz" value="0.0"/>
+    <param name="start_x" value="14.5"/>
+    <param name="start_y" value="4.5"/>
+    <param name="start_z" value="0.5"/>
+    <!-- Set dynamic constraints -->
+    <param name="v_max" value="2.0"/>
+    <param name="a_max" value="1.0"/>
+    <param name="yaw_max" value="0.5"/>
+    <param name="u" value="0.9"/>
+    <param name="u_yaw" value="0.5"/>
+    <param name="dt" value="1"/>
+    <param name="use_3d" value="true"/>
+    <param name="use_yaw" value="false"/>
+  </node>
+
+  <node pkg="planning_ros_utils"
+    name="trajectory_extractor"
+    type="trajectory_extractor_node"
+    output="screen">
+    <remap from="~trajectory" to="test_primitive/trajectory_refined"/>
+    <param name="file" value="$(find mpl_test_node)/launch/map_planner_node/trajectory_command.bag"/>
+    <param name="topic" value="command"/>
+  </node>
+
+</launch>

@@ -19,6 +19,9 @@
 #include <map_utils/closed_shapes.hpp>
 #include <map_utils/grid_map.hpp>
 #include <map_utils/geo_map.hpp>
+#include <map_utils/struct_map_gen.hpp>
+
+
 
 using namespace std;
 
@@ -29,22 +32,18 @@ ros::Subscriber _res_sub;
 sensor_msgs::PointCloud2 globalMap_pcd;
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
 
-double _resolution;
-
 param_env::StructMapGenerator _struct_map_gen;
+param_env::MapParams _mpa;
+param_env::MapGenParams _mgpa;
 
 void resCallback(const std_msgs::Float32 &msg){
 
-  _struct_map_gen.resetRes(msg.data);
-  _struct_map_gen.getPoints(cloudMap);
+  _mpa.resolution_ = msg.data;
+
+  _struct_map_gen.initParams(_mpa);
+  _struct_map_gen.resetMap();
 
 }
-
-
-
-
-
-
 
 int i = 0;
 void pubSensedPoints()
@@ -62,49 +61,36 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "structure_map");
   ros::NodeHandle nh("~");
 
-  _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
+  _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
   _res_sub = nh.subscribe("change_res", 10, resCallback);
 
-  nh.param("map/x_size", mpa.map_size_(0), 40.0);
-  nh.param("map/y_size", mpa.map_size_(1), 40.0);
-  nh.param("map/z_size", mpa.map_size_(2), 5.0);
-  nh.param("map/x_origin", mpa.map_origin_(0), -20.0);
-  nh.param("map/y_origin", mpa.map_origin_(1), -20.0);
-  nh.param("map/z_origin", mpa.map_origin_(2), 0.0);
-  nh.param("map/resolution", mpa.resolution_, 0.1);
+  nh.param("map/x_size", _mpa.map_size_(0), 40.0);
+  nh.param("map/y_size", _mpa.map_size_(1), 40.0);
+  nh.param("map/z_size", _mpa.map_size_(2), 5.0);
+  nh.param("map/x_origin", _mpa.map_origin_(0), -20.0);
+  nh.param("map/y_origin", _mpa.map_origin_(1), -20.0);
+  nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
+  nh.param("map/resolution", _mpa.resolution_, 0.1);
 
   nh.param("map/frame_id", _frame_id, string("map"));
 
-  // space volume
-  _resolution = mpa.resolution_;
-  _all_grids = mpa.map_size_(0) * mpa.map_size_(1) * mpa.map_size_(2) / std::pow(mpa.resolution_, 3);
+  // parameters for the environment
+  nh.param("map/cylinder_ratio", _mgpa.cylinder_ratio_, 0.1);
+  nh.param("map/circle_ratio", _mgpa.circle_ratio_, 0.1);
+  nh.param("map/gate_ratio", _mgpa.gate_ratio_, 0.1);
+  nh.param("map/ellip_ratio", _mgpa.ellip_ratio_, 0.1);
+  nh.param("map/poly_ratio", _mgpa.poly_ratio_, 0.1);
+  // random number ranges
+  nh.param("params/w1", _mgpa.w1_, 0.3);
+  nh.param("params/w2", _mgpa.w2_, 1.0);
+  nh.param("params/w3", _mgpa.w3_, 2.0);
+  nh.param("params/w4", _mgpa.w4_, 3.0);
 
-  // low and high bound of the center position
-  _grid_map.init(mpa);
-
-  double cylinder_ratio, circle_ratio, gate_ratio, ellip_ratio, poly_ratio;
-  // radio of obstacles
-  nh.param("map/cylinder_ratio", cylinder_ratio, 0.1);
-  nh.param("map/circle_ratio", circle_ratio, 0.1);
-  nh.param("map/gate_ratio", gate_ratio, 0.1);
-  nh.param("map/ellip_ratio", ellip_ratio, 0.1);
-  nh.param("map/poly_ratio", poly_ratio, 0.1);
-
-  _cylinder_grids = ceil(_all_grids * cylinder_ratio);
-  _circle_grids = ceil(_all_grids * circle_ratio);
-  _gate_grids = ceil(_all_grids * gate_ratio);
-  _ellip_grids = ceil(_all_grids * ellip_ratio);
-  _poly_grids = ceil(_all_grids * poly_ratio);
-
-  // parameters
-  nh.param("params/w1", _w1, 0.3);
-  nh.param("params/w2", _w2, 1.0);
-  nh.param("params/w3", _w3, 2.0);
-  nh.param("params/w4", _w4, 3.0);
-
+  _struct_map_gen.initParams(_mpa);
+  _struct_map_gen.randomUniMapGen(_mgpa);
+  
+  _struct_map_gen.getPC(cloudMap);
   ros::Duration(0.5).sleep();
-
-  RandomUniMapGenerate();
 
   ros::Rate loop_rate(10.0);
 

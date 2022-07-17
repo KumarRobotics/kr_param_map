@@ -23,6 +23,7 @@ namespace param_env
     /* deducted paramaters */
     Eigen::Vector3d min_range_, max_range_; // map range in pos
     Eigen::Vector3i map_grid_size_;         // map range in index
+    double map_volume_;
     double map_grid_size_ytz_;
     Eigen::Vector3i map_min_idx_, map_max_idx_;
     double inv_resolution_;
@@ -54,8 +55,9 @@ namespace param_env
       mp_ = mpa;
       // update some other related paramaters
       mp_.inv_resolution_ = 1.0 / mp_.resolution_;
-      mp_.min_range_ = mp_.map_origin_;
-      mp_.max_range_ = mp_.map_origin_ + mp_.map_size_;
+      mp_.min_range_  = mp_.map_origin_;
+      mp_.max_range_  = mp_.map_origin_ + mp_.map_size_;
+      mp_.map_volume_ = mp_.map_size_(0)*mp_.map_size_(1)*mp_.map_size_(2);
 
       for (int i = 0; i < 3; ++i)
       {

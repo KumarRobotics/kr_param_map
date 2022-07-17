@@ -28,10 +28,6 @@ int main(int argc, char **argv) {
   param_mpl::UniPlanner uni_mp_planner;
 
   
-
- 
-
-
   std::unique_ptr<MPL::VoxelMapPlanner> planner_ptr;
 
   planner_ptr.reset(new MPL::VoxelMapPlanner(true));

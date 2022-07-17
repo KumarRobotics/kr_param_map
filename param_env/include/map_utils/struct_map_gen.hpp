@@ -28,35 +28,32 @@
 namespace param_env
 {
 
+  struct MapGenParams
+  {
+    /* parameters for map generator */
+    double cylinder_ratio_, circle_ratio_, gate_ratio_, ellip_ratio_, poly_ratio_;
+    double w1_, w2_, w3_, w4_;
+  };
+  
   class StructMapGenerator
   {
   private:
 
-    uniform_real_distribution<double> rand_w, rand_h, rand_cw, rand_radiu;
+    pcl::PointCloud<pcl::PointXYZ> cloudMap_;
 
     param_env::GridMap grid_map_;
     param_env::GeoMap geo_map_;
-    param_env::MapParams mpa;
-
-    int _all_grids, _cylinder_grids, _circle_grids, _ellip_grids, _gate_grids, _poly_grids;
-
-    double w1_, w2_, w3_, w4_;
+    param_env::MapParams mpa_;
+    param_env::MapGenParams mgpa_;
 
     random_device rd;
-    default_random_engine eng(rd());
-
-    uniform_real_distribution<double> rand_theta;
-
-
-    pcl::PointCloud<pcl::PointXYZ> cloudMap;
-
+    uniform_real_distribution<double> rand_theta, rand_w, rand_h, rand_cw, rand_radiu;
 
   public:
 
-    GeoMapGenerator() = default;
+    StructMapGenerator() = default;
 
-    ~GeoMapGenerator() {}
-
+    ~StructMapGenerator() {}
 
     template<class T>
     int updatePts(T &geo_rep)
@@ -67,9 +64,9 @@ namespace param_env
       geo_rep.getBd(bound);
       geo_rep.getCenter(cpt);
 
-      int widNum1 = ceil(bound(0) / _resolution);
-      int widNum2 = ceil(bound(1) / _resolution);
-      int widNum3 = ceil(bound(2) / _resolution);
+      int widNum1 = ceil(bound(0) / mpa_.resolution_);
+      int widNum2 = ceil(bound(1) / mpa_.resolution_);
+      int widNum3 = ceil(bound(2) / mpa_.resolution_);
 
       for (int r = -widNum1; r < widNum1; r++)
       {
@@ -77,10 +74,10 @@ namespace param_env
         {
           for (int t = -widNum3; t < widNum3; t++)
           {
-            ob_pt = cpt + Eigen::Vector3d(r * _resolution,
-                                          s * _resolution,
-                                          t * _resolution);
-            if (_grid_map.isOcc(ob_pt) != 0)
+            ob_pt = cpt + Eigen::Vector3d(r * mpa_.resolution_,
+                                          s * mpa_.resolution_,
+                                          t * mpa_.resolution_);
+            if (grid_map_.isOcc(ob_pt) != 0)
             {
               continue;
             }
@@ -88,14 +85,14 @@ namespace param_env
             {
               continue;
             }
-            _grid_map.setOcc(ob_pt);
+            grid_map_.setOcc(ob_pt);
 
             pcl::PointXYZ pt_random;
             pt_random.x = ob_pt(0);
             pt_random.y = ob_pt(1);
             pt_random.z = ob_pt(2);
 
-            cloudMap.points.push_back(pt_random);
+            cloudMap_.points.push_back(pt_random);
             cur_grids += 1;
           }
         }
@@ -112,17 +109,27 @@ namespace param_env
       {
         updatePts(geo_rep);
       }
+    }
+
+    void initParams(param_env::MapParams &mpa)
+    {
+      mpa_ = mpa;
+      grid_map_.init(mpa_);
+    }
+
+    
+    void getPC(pcl::PointCloud<pcl::PointXYZ> &cloudMap)
+    {
+
+      cloudMap_ = cloudMap;
 
     }
 
 
     //it should be called after the random map gene
-    void resetRes(const float data){
+    void resetMap(){
 
-      mpa.resolution_ = data;
-      _grid_map.init(mpa);
-
-      cloudMap.clear();
+      cloudMap_.clear();
 
       std::vector<param_env::Polyhedron> polyhedron;
       std::vector<param_env::Cylinder> cylinder;
@@ -130,136 +137,148 @@ namespace param_env
       std::vector<param_env::CircleGate> circle_gate;
       std::vector<param_env::RectGate> rect_gate; 
 
-      _geo_map.getPolyhedron(polyhedron);
-      _geo_map.getCylinder(cylinder);
-      _geo_map.getEllipsoid(ellipsoid);
-      _geo_map.getCircleGate(circle_gate);
-      _geo_map.getRectGate(rect_gate);
+      geo_map_.getPolyhedron(polyhedron);
+      geo_map_.getCylinder(cylinder);
+      geo_map_.getEllipsoid(ellipsoid);
+      geo_map_.getCircleGate(circle_gate);
+      geo_map_.getRectGate(rect_gate);
 
       traversePts(polyhedron);
       traversePts(cylinder);
       traversePts(ellipsoid);
       traversePts(circle_gate);
       traversePts(rect_gate);
+
+
+      cloudMap_.width = cloudMap_.points.size();
+      cloudMap_.height = 1;
+      cloudMap_.is_dense = true;
+
     }
 
 
-  void randomUniMapGen()
-  {
-    Eigen::Vector3d bound;
-    Eigen::Vector3d cpt; // center points, object points
+    void randomUniMapGen(param_env::MapGenParams &mgpa)
+    {
+      Eigen::Vector3d bound;
+      Eigen::Vector3d cpt; // center points, object points
+
+      mgpa_ = mgpa;
+
+      default_random_engine eng(rd());
+      
+      grid_map_.setUniRand(eng);
+
+      rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
+      rand_w = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w2_);
+      rand_h = uniform_real_distribution<double>(0.1, mpa_.map_size_(2));
+      rand_cw = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w3_);
+      rand_radiu = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w4_);
+
+      int all_grids = mpa_.map_volume_ / std::pow(mpa_.resolution_, 3);
+      int cylinder_grids = ceil(all_grids * mgpa_.cylinder_ratio_);
+      int circle_grids   = ceil(all_grids * mgpa_.circle_ratio_);
+      int gate_grids     = ceil(all_grids * mgpa_.gate_ratio_);
+      int ellip_grids    = ceil(all_grids * mgpa_.ellip_ratio_);
+      int poly_grids     = ceil(all_grids * mgpa_.poly_ratio_);
+
+      // generate cylinders
+      int cur_grids = 0;
+      while (cur_grids < cylinder_grids)
+      {
+        grid_map_.getUniRandPos(cpt);
+
+        double w, h;
+        h = rand_h(eng);
+        w = rand_cw(eng);
+
+        param_env::Cylinder cylinder(cpt, w, h);
+
+        cur_grids += updatePts(cylinder);
+        geo_map_.add(cylinder);
+
+      }
+      cylinder_grids = cur_grids;
+
+      cur_grids = 0;
+      // generate circle obs
+      while (cur_grids < circle_grids)
+      {
+        grid_map_.getUniRandPos(cpt);
+
+        double theta = rand_theta(eng);
+        double width = 0.1 + 0.2 * rand_radiu(eng);
+
+        bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
+
+        param_env::CircleGate cir_gate(cpt, bound, theta);
+
+        cur_grids += updatePts(cir_gate);
+        geo_map_.add(cir_gate);
+      }
+      circle_grids = cur_grids;
+
+      cur_grids = 0;
+      // generate circle obs
+      while (cur_grids < gate_grids)
+      {
+
+        grid_map_.getUniRandPos(cpt);
+
+        double theta = rand_theta(eng);
+        double width = 0.1 + 0.2 * rand_radiu(eng);
+
+        bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
+
+        param_env::RectGate rect_gate(cpt, bound, theta);
+
+        cur_grids += updatePts(rect_gate);
+        geo_map_.add(rect_gate);
+      }
+      gate_grids = cur_grids;
+
+
+      //std::cout <<  "ellip_grids " << ellip_grids << std::endl;
+      // generate ellipsoid
+      cur_grids = 0;
+      while (cur_grids < ellip_grids)
+      {
+        grid_map_.getUniRandPos(cpt);
+        Eigen::Vector3d euler_angle;
+        euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
+        bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
+
+        param_env::Ellipsoid ellip;
+        ellip.init(cpt, bound, euler_angle);
+
+        cur_grids += updatePts(ellip);
+        geo_map_.add(ellip);
+      }
+
+      // generate polytopes
+      cur_grids = 0;
+      while (cur_grids < poly_grids)
+      {
+        grid_map_.getUniRandPos(cpt);
+        bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
+
+        param_env::Polyhedron poly;
+        poly.randomInit(cpt, bound);
+
+        cur_grids += updatePts(poly);
+        geo_map_.add(poly);
+      }
+
+      std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+      std::cout << "+++ Finished generate random map ! +++" << std::endl;
+      std::cout << "+++ The ratios for geometries are: +++" << std::endl;
+      std::cout << setiosflags(ios::fixed) << setprecision(4) << std::endl;
+      std::cout << "+++ cylinders  : " << float(cylinder_grids) / float(all_grids) << "             +++" << std::endl;
+      std::cout << "+++ circles    : " << float(circle_grids) / float(all_grids)   << "             +++" << std::endl;
+      std::cout << "+++ gates      : " << float(gate_grids) / float(all_grids)     << "             +++" << std::endl;
+      std::cout << "+++ ellipsoids : " << float(ellip_grids) / float(all_grids)    << "             +++" << std::endl;
+      std::cout << "+++ polytopes  : " << float(poly_grids) / float(all_grids)     << "             +++" << std::endl;    
     
-    grid_map_.setUniRand(eng);
-
-    rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
-    rand_w = uniform_real_distribution<double>(w1_, w2_);
-    rand_h = uniform_real_distribution<double>(0.1, mpa.map_size_(2));
-    rand_cw = uniform_real_distribution<double>(w1_, w3_);
-    rand_radiu = uniform_real_distribution<double>(w1_, w4_);
-
-
-    // generate cylinders
-    int cur_grids = 0;
-    while (cur_grids < _cylinder_grids)
-    {
-      grid_map_.getUniRandPos(cpt);
-
-      double w, h;
-      h = rand_h(eng);
-      w = rand_cw(eng);
-
-      param_env::Cylinder cylinder(cpt, w, h);
-
-      cur_grids += updatePts(cylinder);
-      geo_map_.add(cylinder);
-
     }
-    _cylinder_grids = cur_grids;
-
-    cur_grids = 0;
-    // generate circle obs
-    while (cur_grids < _circle_grids)
-    {
-      grid_map_.getUniRandPos(cpt);
-
-      double theta = rand_theta(eng);
-      double width = 0.1 + 0.2 * rand_radiu(eng);
-
-      bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
-
-      param_env::CircleGate cir_gate(cpt, bound, theta);
-
-      // outdoor box: infl * radNum2 * radNum2
-      // indoor box: infl * radNum1 * radNum1
-      cur_grids += updatePts(cir_gate);
-      geo_map_.add(cir_gate);
-    }
-    _circle_grids = cur_grids;
-
-    cur_grids = 0;
-    // generate circle obs
-    while (cur_grids < _gate_grids)
-    {
-
-      grid_map_.getUniRandPos(cpt);
-
-      double theta = rand_theta(eng);
-      double width = 0.1 + 0.2 * rand_radiu(eng);
-
-      bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
-
-      param_env::RectGate rect_gate(cpt, bound, theta);
-
-      cur_grids += updatePts(rect_gate);
-      geo_map_.add(rect_gate);
-    }
-    _gate_grids = cur_grids;
-
-
-    //std::cout <<  "_ellip_grids " << _ellip_grids << std::endl;
-    // generate ellipsoid
-    cur_grids = 0;
-    while (cur_grids < _ellip_grids)
-    {
-      grid_map_.getUniRandPos(cpt);
-      Eigen::Vector3d euler_angle;
-      euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
-      bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
-
-      param_env::Ellipsoid ellip;
-      ellip.init(cpt, bound, euler_angle);
-
-      cur_grids += updatePts(ellip);
-      geo_map_.add(ellip);
-    }
-
-    // generate polytopes
-    cur_grids = 0;
-    while (cur_grids < _poly_grids)
-    {
-      grid_map_.getUniRandPos(cpt);
-      bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
-
-      param_env::Polyhedron poly;
-      poly.randomInit(cpt, bound);
-
-      cur_grids += updatePts(poly);
-      geo_map_.add(poly);
-    }
-
-    cloudMap.width = cloudMap.points.size();
-    cloudMap.height = 1;
-    cloudMap.is_dense = true;
-
-    std::cout << "Finished generate random map !" << std::endl;
-    std::cout << "The space ratio for cylinders, circles, gates, ellipsoids, and polytopes are: " << std::endl;
-    std::cout << setiosflags(ios::fixed) << setprecision(4) << std::endl;
-    std::cout << float(_cylinder_grids) / float(_all_grids) << " ";
-    std::cout << float(_circle_grids) / float(_all_grids) << " ";
-    std::cout << float(_gate_grids) / float(_all_grids) << " ";
-    std::cout << float(_ellip_grids) / float(_all_grids) << " ";
-    std::cout << float(_poly_grids) / float(_all_grids) << std::endl;
-  }
 
 
 

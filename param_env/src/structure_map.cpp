@@ -34,7 +34,7 @@ pcl::PointCloud<pcl::PointXYZ> cloudMap;
 
 param_env::StructMapGenerator _struct_map_gen;
 param_env::MapParams _mpa;
-param_env::MapGenParams _mgpa;
+param_env::MapGenParams _map_gen_pa;
 
 void resCallback(const std_msgs::Float32 &msg){
 
@@ -42,6 +42,7 @@ void resCallback(const std_msgs::Float32 &msg){
 
   _struct_map_gen.initParams(_mpa);
   _struct_map_gen.resetMap();
+  _struct_map_gen.getPC(cloudMap);
 
 }
 
@@ -72,23 +73,25 @@ int main(int argc, char **argv)
   nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
   nh.param("map/resolution", _mpa.resolution_, 0.1);
 
+  
+
   nh.param("map/frame_id", _frame_id, string("map"));
 
   // parameters for the environment
-  nh.param("map/cylinder_ratio", _mgpa.cylinder_ratio_, 0.1);
-  nh.param("map/circle_ratio", _mgpa.circle_ratio_, 0.1);
-  nh.param("map/gate_ratio", _mgpa.gate_ratio_, 0.1);
-  nh.param("map/ellip_ratio", _mgpa.ellip_ratio_, 0.1);
-  nh.param("map/poly_ratio", _mgpa.poly_ratio_, 0.1);
+  nh.param("map/cylinder_ratio", _map_gen_pa.cylinder_ratio_, 0.1);
+  nh.param("map/circle_ratio", _map_gen_pa.circle_ratio_, 0.1);
+  nh.param("map/gate_ratio", _map_gen_pa.gate_ratio_, 0.1);
+  nh.param("map/ellip_ratio", _map_gen_pa.ellip_ratio_, 0.1);
+  nh.param("map/poly_ratio", _map_gen_pa.poly_ratio_, 0.1);
   // random number ranges
-  nh.param("params/w1", _mgpa.w1_, 0.3);
-  nh.param("params/w2", _mgpa.w2_, 1.0);
-  nh.param("params/w3", _mgpa.w3_, 2.0);
-  nh.param("params/w4", _mgpa.w4_, 3.0);
+  nh.param("params/w1", _map_gen_pa.w1_, 0.3);
+  nh.param("params/w2", _map_gen_pa.w2_, 1.0);
+  nh.param("params/w3", _map_gen_pa.w3_, 2.0);
+  nh.param("params/w4", _map_gen_pa.w4_, 3.0);
 
+  // origin mapsize resolution isrequired
   _struct_map_gen.initParams(_mpa);
-  _struct_map_gen.randomUniMapGen(_mgpa);
-  
+  _struct_map_gen.randomUniMapGen(_map_gen_pa);
   _struct_map_gen.getPC(cloudMap);
   ros::Duration(0.5).sleep();
 

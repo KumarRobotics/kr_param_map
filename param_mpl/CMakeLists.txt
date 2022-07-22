@@ -12,8 +12,6 @@ find_package(motion_primitive_library REQUIRED)
 find_package(decomp_util REQUIRED)
 find_package(PCL 1.7 REQUIRED)
 
-include_directories(${EIGEN3_INCLUDE_DIR} ${MOTION_PRIMITIVE_LIBRARY_INCLUDE_DIRS} ${DECOMP_UTIL_INCLUDE_DIRS})
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -22,12 +20,12 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   decomp_ros_msgs
   decomp_ros_utils
-  param_env
 )
 
-
 catkin_package(
- CATKIN_DEPENDS decomp_ros_msgs decomp_ros_utils param_env
+ INCLUDE_DIRS include
+ LIBRARIES param_mpl
+ CATKIN_DEPENDS decomp_ros_msgs decomp_ros_utils
 #  DEPENDS system_lib
 )
 

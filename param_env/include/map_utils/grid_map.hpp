@@ -16,7 +16,7 @@ namespace param_env
 
     /* grid map basic properties */
     Eigen::Vector3d map_origin_, map_size_;
-
+    
     /* grid map adjusted parameters */
     double resolution_, global_density_;
 
@@ -49,7 +49,7 @@ namespace param_env
 
     ~GridMap() {}
 
-    void init(const MapParams &mpa)
+    void initMap(const MapParams &mpa)
     {
 
       mp_ = mpa;
@@ -67,12 +67,25 @@ namespace param_env
       mp_.map_grid_size_ytz_ = mp_.map_grid_size_(1) * mp_.map_grid_size_(2);
 
       int buffer_size = mp_.map_grid_size_(0) * mp_.map_grid_size_ytz_;
-      cout << "buffer size: " << buffer_size << endl;
       occupancy_buffer_.resize(buffer_size);
       fill(occupancy_buffer_.begin(), occupancy_buffer_.end(), clamp_min_log_);
 
+      printMapInfo();
+    }
+
+    void printMapInfo()
+    {
+
+      std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+      std::cout << "+++++++Grid Map Information+++++++++++" << std::endl;
+      std::cout << "+++ resolution : " << mp_.resolution_  << std::endl;
+      std::cout << "+++ map volume : " << mp_.map_volume_  << std::endl;
+      std::cout << "+++ origin     : " << mp_.map_origin_(0) << " " << mp_.map_origin_(1) << " " << mp_.map_origin_(2) << std::endl;
+      std::cout << "+++ size       : " << mp_.map_size_(0) << " " << mp_.map_size_(1) << " " << mp_.map_size_(2) << std::endl;
+      std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
 
     }
+
 
     void getMapParams(MapParams &mpa)
     {

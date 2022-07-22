@@ -89,7 +89,6 @@ namespace param_env
             {
               continue;
             }
-
             
             grid_map_.setOcc(ob_pt);
 

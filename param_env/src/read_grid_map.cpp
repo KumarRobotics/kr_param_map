@@ -29,11 +29,78 @@ ros::Publisher  _all_map_cloud_pub;
 ros::Subscriber _res_sub;
 
 sensor_msgs::PointCloud2 globalMap_pcd;
+
+/*** global params for cloudMap***/
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
 
 param_env::StructMapGenerator _struct_map_gen;
 param_env::MapParams _mpa;
 param_env::MapGenParams _mgpa;
+
+
+/*** read ros bag ***/
+void read_pcs_bag(std::string file_name, std::string topic, sensor_msgs::PointCloud &cloud) {
+  rosbag::Bag bag;
+  bag.open(file_name, rosbag::bagmode::Read);
+
+  std::vector<std::string> topics;
+  topics.push_back(topic);
+
+  rosbag::View view(bag, rosbag::TopicQuery(topics));
+
+  bool find = false;
+  BOOST_FOREACH (rosbag::MessageInstance const m, view) {
+    if (m.instantiate<T>() != NULL) {
+      msg = *m.instantiate<T>();
+      ROS_WARN("Get data!");
+      find = true;
+      break;
+    }
+  }
+  bag.close();
+  if (!find)
+    ROS_WARN("Fail to find '%s' in '%s'", topic.c_str(), file_name.c_str());
+
+  
+  //should be 2
+  sensor_msgs::PointCloud2 cloud2 = read_bag<sensor_msgs::PointCloud2>(file_name, topic_name);
+  //Convert into vector of Eigen
+   cloud;
+  sensor_msgs::convertPointCloud2ToPointCloud(cloud2, cloud);
+  cloud.header = header_;
+  map_pub.publish(cloud);
+
+  return msg;
+}
+
+/*** read pcd file ***/
+
+
+/*** randomly gen points  ***/
+void gen_pcs(float bound=50, int num = 10000){
+  
+  std::default_random_engine random(time(NULL));
+  std::uniform_real_distribution<double> r(-bound, bound);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+  int loop_n = 0;
+
+  while (loop_n < num) {
+      float ax = r(random);
+      float ay = r(random);
+      float az = r(random);
+      float fx1 = bound/4.0;
+      float fy1 = bound/4.0;
+      float fy2 = bound/4.0;
+      float fz2 = bound/4.0;
+      if (ax < fx1 && ax > - fx1 && ay < fy1 && ay > - fy1) continue;
+      if (ay < fy2 && ay > - fy2 && az < fz2 && az > - fz2) continue;
+      cloud->points.push_back(pcl::PointXYZ(ax,ay,az));
+      loop_n++;
+  }
+
+}
+
+
 
 void resCallback(const std_msgs::Float32 &msg){
 
@@ -44,9 +111,15 @@ void resCallback(const std_msgs::Float32 &msg){
 
 }
 
+
+
 int i = 0;
 void pubSensedPoints()
 {
+
+
+
+
   // if (i < 10) {
   pcl::toROSMsg(cloudMap, globalMap_pcd);
   globalMap_pcd.header.frame_id = _frame_id;

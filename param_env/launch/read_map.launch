@@ -1,0 +1,30 @@
+<launch>
+
+  <arg name="map_frame_id" default="map"/>
+  <arg name="map_size_x" default="40"/>
+  <arg name="map_size_y" default="40"/>
+  <arg name="map_size_z" default="5"/>
+
+  <node pkg ="param_env" name ="structure_map" type ="structure_map" output = "screen">    
+    <!-- this is the map init position, not the odom-->
+
+    <param name="map/x_size"     value="$(arg map_size_x)" />
+    <param name="map/y_size"     value="$(arg map_size_y)" />
+    <param name="map/z_size"     value="$(arg map_size_z)" />
+    <param name="map/x_origin"   value="-20.0" type="double"/>
+    <param name="map/y_origin"   value="-20.0" type="double"/>
+    <param name="map/z_origin"   value="0.0" type="double"/>
+
+    <param name="map/resolution" value="0.1"/>        
+    <param name="map/frame_id"     value="$(arg map_frame_id)" />
+  </node>
+
+
+  <!--<arg name="rviz_config" default="$(find param_env)/launch/default.rviz"/>
+  <node pkg="rviz"
+    type="rviz"
+    name="rviz"
+    args="-d $(arg rviz_config)"/> -->
+
+
+</launch>

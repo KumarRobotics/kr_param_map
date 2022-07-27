@@ -85,7 +85,6 @@ namespace param_env
 
     }
 
-
     void getMapParams(GridMapParams &mpa)
     {
 

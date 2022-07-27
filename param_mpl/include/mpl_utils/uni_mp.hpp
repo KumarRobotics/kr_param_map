@@ -9,7 +9,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-#include <map_utils/closed_shapes.hpp>
+#include <map_utils/map_basics.hpp>
 
 #include <map_utils/grid_map.hpp>
 #include <map_utils/geo_map.hpp>

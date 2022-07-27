@@ -19,7 +19,7 @@
 #include <Eigen/Eigen>
 #include <random>
 
-#include <map_utils/closed_shapes.hpp>
+#include <map_utils/map_basics.hpp>
 #include <map_utils/grid_map.hpp>
 #include <map_utils/geo_map.hpp>
 
@@ -43,9 +43,10 @@ namespace param_env
 
     param_env::GridMap grid_map_;
     param_env::GeoMap geo_map_;
+
+    param_env::GridMapParams mpa_;
+
     param_env::MapGenParams mgpa_;
-    double map_resolution_;
-    double map_volume_;
 
     random_device rd;
     uniform_real_distribution<double> rand_theta, rand_w, rand_h, rand_cw, rand_radiu;
@@ -65,9 +66,9 @@ namespace param_env
       geo_rep.getBd(bound);
       geo_rep.getCenter(cpt);
 
-      int widNum1 = ceil(bound(0) / map_resolution_);
-      int widNum2 = ceil(bound(1) / map_resolution_);
-      int widNum3 = ceil(bound(2) / map_resolution_);
+      int widNum1 = ceil(bound(0) / mpa_.resolution_);
+      int widNum2 = ceil(bound(1) / mpa_.resolution_);
+      int widNum3 = ceil(bound(2) / mpa_.resolution_);
 
       for (int r = -widNum1; r < widNum1; r++)
       {
@@ -75,9 +76,9 @@ namespace param_env
         {
           for (int t = -widNum3; t < widNum3; t++)
           {
-            ob_pt = cpt + Eigen::Vector3d(r * map_resolution_,
-                                          s * map_resolution_,
-                                          t * map_resolution_);
+            ob_pt = cpt + Eigen::Vector3d(r * mpa_.resolution_,
+                                          s * mpa_.resolution_,
+                                          t * mpa_.resolution_);
                            
             if (grid_map_.isOcc(ob_pt) != 0)
             {
@@ -116,17 +117,32 @@ namespace param_env
       }
     }
 
-    void initParams(param_env::MapParams &mpa)
+    void initParams(param_env::GridMapParams &mpa)
     {
+      // update basic map paramaters
+      mpa.basic_mp_.min_range_  = mpa.basic_mp_.map_origin_;
+      mpa.basic_mp_.max_range_  = mpa.basic_mp_.map_origin_ + mpa.basic_mp_.map_size_;
+      mpa.basic_mp_.map_volume_ = mpa.basic_mp_.map_size_(0)*mpa.basic_mp_.map_size_(1)*mpa.basic_mp_.map_size_(2);
+
+      
       grid_map_.initMap(mpa);
-      map_resolution_ = mpa.resolution_;
-      map_volume_ = mpa.map_size_(0)*mpa.map_size_(1)*mpa.map_size_(2);
+
+      mpa_ = mpa;
 
       rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
-      rand_h = uniform_real_distribution<double>(0.1, mpa.map_size_(2));
+      rand_h = uniform_real_distribution<double>(0.1, mpa.basic_mp_.map_size_(2));
     }
 
     
+    void changeRes(double &res)
+    {
+      mpa_.resolution_ = res;
+
+      grid_map_.initMap(mpa_);
+
+    }
+
+
     void getPC(pcl::PointCloud<pcl::PointXYZ> &cloudMap)
     {
 
@@ -175,7 +191,7 @@ namespace param_env
       
       grid_map_.setUniRand(eng);
 
-      int all_grids = map_volume_ / std::pow(map_resolution_, 3);
+      int all_grids = ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));
       int cylinder_grids = ceil(all_grids * mgpa_.cylinder_ratio_);
       int circle_grids   = ceil(all_grids * mgpa_.circle_ratio_);
       int gate_grids     = ceil(all_grids * mgpa_.gate_ratio_);

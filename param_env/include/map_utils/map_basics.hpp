@@ -1,5 +1,5 @@
-#ifndef _CLOSED_SHAPES_HPP
-#define _CLOSED_SHAPES_HPP
+#ifndef _MAP_BASICS_HPP
+#define _MAP_BASICS_HPP
 
 #include <Eigen/Eigen>
 #include <iostream>
@@ -15,7 +15,7 @@
 
 namespace param_env
 {
-
+  
   // help functions
   Eigen::Matrix3d eulerToRot(Eigen::Vector3d &odom_euler)
   {
@@ -28,6 +28,19 @@ namespace param_env
 
     return R;
   }
+
+  /* ---------------- map parameters ---------------- */
+  struct BasicMapParams
+  {
+    /* grid map basic properties */
+    Eigen::Vector3d map_origin_, map_size_;
+    
+    /* deducted paramaters */
+    Eigen::Vector3d min_range_, max_range_; // map range in pos
+    double map_volume_;
+
+  };
+
 
   /* ---------------- 2D shapes ---------------- */
   class Polygon

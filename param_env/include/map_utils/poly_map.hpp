@@ -11,13 +11,20 @@ namespace param_env
 
   using namespace std;
 
+
+  struct PolyMapParams
+  {
+
+    BasicMapParams basic_mp_;
+
+
+
+  };
+
+
   class PolyMap
   {
   private:
-    
-
-
-    
 
 
   public:

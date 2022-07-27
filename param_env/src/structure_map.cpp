@@ -16,7 +16,7 @@
 #include <Eigen/Eigen>
 #include <random>
 
-#include <map_utils/closed_shapes.hpp>
+#include <map_utils/map_basics.hpp>
 #include <map_utils/grid_map.hpp>
 #include <map_utils/geo_map.hpp>
 #include <map_utils/struct_map_gen.hpp>
@@ -33,14 +33,14 @@ sensor_msgs::PointCloud2 globalMap_pcd;
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
 
 param_env::StructMapGenerator _struct_map_gen;
-param_env::MapParams _mpa;
+param_env::GridMapParams _grid_mpa;
 param_env::MapGenParams _map_gen_pa;
 
 void resCallback(const std_msgs::Float32 &msg){
 
-  _mpa.resolution_ = msg.data;
+  _grid_mpa.resolution_ = msg.data;
 
-  _struct_map_gen.initParams(_mpa);
+  _struct_map_gen.initParams(_grid_mpa);
   _struct_map_gen.resetMap();
   _struct_map_gen.getPC(cloudMap);
 
@@ -64,6 +64,8 @@ int main(int argc, char **argv)
 
   _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
   _res_sub = nh.subscribe("change_res", 10, resCallback);
+  
+  param_env::BasicMapParams _mpa;
 
   nh.param("map/x_size", _mpa.map_size_(0), 40.0);
   nh.param("map/y_size", _mpa.map_size_(1), 40.0);
@@ -71,9 +73,9 @@ int main(int argc, char **argv)
   nh.param("map/x_origin", _mpa.map_origin_(0), -20.0);
   nh.param("map/y_origin", _mpa.map_origin_(1), -20.0);
   nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
-  nh.param("map/resolution", _mpa.resolution_, 0.1);
+  nh.param("map/resolution", _grid_mpa.resolution_, 0.1);
 
-  
+  _grid_mpa.basic_mp_ = _mpa;
 
   nh.param("map/frame_id", _frame_id, string("map"));
 
@@ -90,7 +92,7 @@ int main(int argc, char **argv)
   nh.param("params/w4", _map_gen_pa.w4_, 3.0);
 
   // origin mapsize resolution isrequired
-  _struct_map_gen.initParams(_mpa);
+  _struct_map_gen.initParams(_grid_mpa);
   _struct_map_gen.randomUniMapGen(_map_gen_pa);
   _struct_map_gen.getPC(cloudMap);
   ros::Duration(0.5).sleep();

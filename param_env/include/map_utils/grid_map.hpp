@@ -5,38 +5,40 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <map_utils/map_basics.hpp>
+
 
 namespace param_env
 {
-
   using namespace std;
 
-  struct MapParams
+  struct GridMapParams
   {
 
-    /* grid map basic properties */
-    Eigen::Vector3d map_origin_, map_size_;
-    
+    BasicMapParams basic_mp_;
+
     /* grid map adjusted parameters */
     double resolution_, global_density_;
 
     /* deducted paramaters */
-    Eigen::Vector3d min_range_, max_range_; // map range in pos
     Eigen::Vector3i map_grid_size_;         // map range in index
-    double map_volume_;
-    double map_grid_size_ytz_;
+    int map_grid_size_ytz_;
     Eigen::Vector3i map_min_idx_, map_max_idx_;
     double inv_resolution_;
+
+    /*advanced parameters*/
+    double clamp_min_log_ = 0.01;
+    double clamp_max_log_ = 0.99;
+    double min_thrd_ = 0.80;
+
   };
 
   class GridMap
   {
   private:
     std::vector<double> occupancy_buffer_; // 0 is free, 1 is occupied
-    double clamp_min_log_ = 0.01;
-    double clamp_max_log_ = 0.99;
-    double min_thrd_ = 0.80;
-    MapParams mp_;
+
+    GridMapParams mp_;
 
     //get random position in the map
     uniform_real_distribution<double> rand_x_;
@@ -49,26 +51,23 @@ namespace param_env
 
     ~GridMap() {}
 
-    void initMap(const MapParams &mpa)
+    void initMap(const GridMapParams &mpa)
     {
 
       mp_ = mpa;
-      // update some other related paramaters
-      mp_.inv_resolution_ = 1.0 / mp_.resolution_;
-      mp_.min_range_  = mp_.map_origin_;
-      mp_.max_range_  = mp_.map_origin_ + mp_.map_size_;
-      mp_.map_volume_ = mp_.map_size_(0)*mp_.map_size_(1)*mp_.map_size_(2);
 
+      // update grid map parameters
+      mp_.inv_resolution_ = 1.0 / mp_.resolution_;
       for (int i = 0; i < 3; ++i)
       {
-        mp_.map_grid_size_(i) = ceil(mp_.map_size_(i) / mp_.resolution_);
+        mp_.map_grid_size_(i) = ceil(mp_.basic_mp_.map_size_(i) / mp_.resolution_);
       }
 
       mp_.map_grid_size_ytz_ = mp_.map_grid_size_(1) * mp_.map_grid_size_(2);
 
       int buffer_size = mp_.map_grid_size_(0) * mp_.map_grid_size_ytz_;
       occupancy_buffer_.resize(buffer_size);
-      fill(occupancy_buffer_.begin(), occupancy_buffer_.end(), clamp_min_log_);
+      fill(occupancy_buffer_.begin(), occupancy_buffer_.end(), mp_.clamp_min_log_);
 
       printMapInfo();
     }
@@ -79,15 +78,15 @@ namespace param_env
       std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
       std::cout << "+++++++Grid Map Information+++++++++++" << std::endl;
       std::cout << "+++ resolution : " << mp_.resolution_  << std::endl;
-      std::cout << "+++ map volume : " << mp_.map_volume_  << std::endl;
-      std::cout << "+++ origin     : " << mp_.map_origin_(0) << " " << mp_.map_origin_(1) << " " << mp_.map_origin_(2) << std::endl;
-      std::cout << "+++ size       : " << mp_.map_size_(0) << " " << mp_.map_size_(1) << " " << mp_.map_size_(2) << std::endl;
+      std::cout << "+++ map volume : " << mp_.basic_mp_.map_volume_  << std::endl;
+      std::cout << "+++ origin     : " << mp_.basic_mp_.map_origin_(0) << " " << mp_.basic_mp_.map_origin_(1) << " " << mp_.basic_mp_.map_origin_(2) << std::endl;
+      std::cout << "+++ size       : " << mp_.basic_mp_.map_size_(0) << " " << mp_.basic_mp_.map_size_(1) << " " << mp_.basic_mp_.map_size_(2) << std::endl;
       std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
 
     }
 
 
-    void getMapParams(MapParams &mpa)
+    void getMapParams(GridMapParams &mpa)
     {
 
       mpa = mp_;
@@ -96,13 +95,13 @@ namespace param_env
     void resetBuffer(Eigen::Vector3d min_pos,
                      Eigen::Vector3d max_pos)
     {
-      min_pos(0) = max(min_pos(0), mp_.min_range_(0));
-      min_pos(1) = max(min_pos(1), mp_.min_range_(1));
-      min_pos(2) = max(min_pos(2), mp_.min_range_(2));
+      min_pos(0) = max(min_pos(0), mp_.basic_mp_.min_range_(0));
+      min_pos(1) = max(min_pos(1), mp_.basic_mp_.min_range_(1));
+      min_pos(2) = max(min_pos(2), mp_.basic_mp_.min_range_(2));
 
-      max_pos(0) = min(max_pos(0), mp_.max_range_(0));
-      max_pos(1) = min(max_pos(1), mp_.max_range_(1));
-      max_pos(2) = min(max_pos(2), mp_.max_range_(2));
+      max_pos(0) = min(max_pos(0), mp_.basic_mp_.max_range_(0));
+      max_pos(1) = min(max_pos(1), mp_.basic_mp_.max_range_(1));
+      max_pos(2) = min(max_pos(2), mp_.basic_mp_.max_range_(2));
 
       Eigen::Vector3i min_id, max_id;
 
@@ -115,7 +114,7 @@ namespace param_env
         for (int y = min_id(1); y <= max_id(1); ++y)
           for (int z = min_id(2); z <= max_id(2); ++z)
           {
-            occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] = clamp_min_log_;
+            occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] = mp_.clamp_min_log_;
           }
     }
 
@@ -126,7 +125,7 @@ namespace param_env
       if (!isInMap(id))
         return;
 
-      occupancy_buffer_[getBufferCnt(id)] = clamp_max_log_;
+      occupancy_buffer_[getBufferCnt(id)] = mp_.clamp_max_log_;
     }
 
 
@@ -139,16 +138,16 @@ namespace param_env
       }
         
       // (x, y, z) -> x*ny*nz + y*nz + z
-      return occupancy_buffer_[getBufferCnt(id)] > min_thrd_ ? 1 : 0;
+      return occupancy_buffer_[getBufferCnt(id)] > mp_.min_thrd_ ? 1 : 0;
     }
 
 
 
     void setUniRand(default_random_engine &eng){
 
-      rand_x_ = uniform_real_distribution<double>(mp_.min_range_(0), mp_.max_range_(0));
-      rand_y_ = uniform_real_distribution<double>(mp_.min_range_(1), mp_.max_range_(1));
-      rand_z_ = uniform_real_distribution<double>(mp_.min_range_(2), mp_.max_range_(2));
+      rand_x_ = uniform_real_distribution<double>(mp_.basic_mp_.min_range_(0), mp_.basic_mp_.max_range_(0));
+      rand_y_ = uniform_real_distribution<double>(mp_.basic_mp_.min_range_(1), mp_.basic_mp_.max_range_(1));
+      rand_z_ = uniform_real_distribution<double>(mp_.basic_mp_.min_range_(2), mp_.basic_mp_.max_range_(2));
 
       eng_ = eng;
 
@@ -170,9 +169,9 @@ namespace param_env
     bool isInMap(const Eigen::Vector3d &pos)
     {
 
-      if (pos(0) < mp_.min_range_(0) || pos(0) >= mp_.max_range_(0) ||
-          pos(1) < mp_.min_range_(1) || pos(1) >= mp_.max_range_(1) ||
-          pos(2) < mp_.min_range_(2) || pos(2) >= mp_.max_range_(2))
+      if (pos(0) < mp_.basic_mp_.min_range_(0) || pos(0) >= mp_.basic_mp_.max_range_(0) ||
+          pos(1) < mp_.basic_mp_.min_range_(1) || pos(1) >= mp_.basic_mp_.max_range_(1) ||
+          pos(2) < mp_.basic_mp_.min_range_(2) || pos(2) >= mp_.basic_mp_.max_range_(2))
       {
         return false;
       }
@@ -198,14 +197,14 @@ namespace param_env
     {
       for (int i = 0; i < 3; ++i)
       {
-        id(i) = floor((pos(i) - mp_.map_origin_(i)) * mp_.inv_resolution_);
+        id(i) = floor((pos(i) - mp_.basic_mp_.map_origin_(i)) * mp_.inv_resolution_);
       }
     }
 
     void indexToPos(const Eigen::Vector3i &id,
                     Eigen::Vector3d &pos)
     {
-      pos = mp_.map_origin_;
+      pos = mp_.basic_mp_.map_origin_;
       for (int i = 0; i < 3; ++i)
       {
         pos(i) += (id(i) + 0.5) * mp_.resolution_;

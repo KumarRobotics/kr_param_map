@@ -10,7 +10,7 @@ All in one! It's a revolution of map parameterization and representation for mot
 
 
 
-### general map annotation
+### 0.1 general map annotation
 
 
 <p align="center">
@@ -25,17 +25,23 @@ All in one! It's a revolution of map parameterization and representation for mot
 
 ### 1.1 Grid Map Reader
 
-It support:
+It support file format as:
 
-- 
-- 
-- 
+- rosbag: sensor_msgs::PointCloud
+- rosbag: sensor_msgs::PointCloud2
+- pcd
+
+set the map mode and file path in "read_grid_map.launch" and launch 
+```
+roslaunch param_env read_grid_map.launch
+```
+
+
 
 <p align="center">
   <img src="docs/pcd.png" width = "390" height = "390"/>
   <img src="docs/pcd_inf.png" width = "390" height = "390"/>
 </p>
-
 
 
 

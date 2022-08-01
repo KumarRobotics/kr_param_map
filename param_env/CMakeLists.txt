@@ -13,6 +13,7 @@ find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  rosbag
   std_msgs
   geometry_msgs
   pcl_conversions
@@ -38,3 +39,12 @@ add_executable (structure_map src/structure_map.cpp)
 target_link_libraries(structure_map
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES})
+
+
+add_executable (read_grid_map src/read_grid_map.cpp)
+
+target_link_libraries(read_grid_map
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES})
+
+

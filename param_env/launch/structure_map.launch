@@ -4,6 +4,9 @@
   <arg name="map_size_x" default="40"/>
   <arg name="map_size_y" default="40"/>
   <arg name="map_size_z" default="5"/>
+  <arg name="map_x_origin" default="-20.0"/>
+  <arg name="map_y_origin" default="-20.0"/>
+  <arg name="map_z_origin" default="0.0"/>
 
   <node pkg ="param_env" name ="structure_map" type ="structure_map" output = "screen">    
     <!-- this is the map init position, not the odom-->
@@ -11,9 +14,9 @@
     <param name="map/x_size"     value="$(arg map_size_x)" />
     <param name="map/y_size"     value="$(arg map_size_y)" />
     <param name="map/z_size"     value="$(arg map_size_z)" />
-    <param name="map/x_origin"   value="-20.0" type="double"/>
-    <param name="map/y_origin"   value="-20.0" type="double"/>
-    <param name="map/z_origin"   value="0.0" type="double"/>
+    <param name="map/x_origin"   value="$(arg map_x_origin)"/>
+    <param name="map/y_origin"   value="$(arg map_y_origin)"/>
+    <param name="map/z_origin"   value="$(arg map_z_origin)"/>
 
     <param name="map/resolution" value="0.1"/>        
     <param name="map/frame_id"     value="$(arg map_frame_id)" />

@@ -12,6 +12,7 @@
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/PointCloud.h>
 #include <std_msgs/Float32.h>
 #include <Eigen/Eigen>
 #include <random>
@@ -19,29 +20,47 @@
 #include <map_utils/map_basics.hpp>
 #include <map_utils/grid_map.hpp>
 #include <map_utils/geo_map.hpp>
-#include <map_utils/struct_map_gen.hpp>
 
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
+#include <sensor_msgs/point_cloud_conversion.h>
 
 using namespace std;
 
 std::string _frame_id;
-ros::Publisher  _all_map_cloud_pub;
+ros::Publisher _all_cloud_pub, _all_map_pub;
 ros::Subscriber _res_sub;
 
-sensor_msgs::PointCloud2 globalMap_pcd;
+sensor_msgs::PointCloud2 globalCloud_pcd, globalMap_pcd;
 
 /*** global params for cloudMap***/
-pcl::PointCloud<pcl::PointXYZ> cloudMap;
+pcl::PointCloud<pcl::PointXYZ> cloudMap, gridCloudMap;
 
-param_env::StructMapGenerator _struct_map_gen;
-param_env::MapParams _mpa;
-param_env::MapGenParams _mgpa;
+param_env::GridMapParams _grid_mpa;
+param_env::GridMap _grid_map;
+param_env::BasicMapParams _mpa;
+double _inflate_ratio = 0.0;
+
+
+void toPcsMsg()
+{
+  cloudMap.width = cloudMap.points.size();
+  cloudMap.height = 1;
+  cloudMap.is_dense = true;
+  pcl::toROSMsg(cloudMap, globalCloud_pcd);
+}
+
+
+
+
 
 
 /*** read ros bag ***/
-void read_pcs_bag(std::string file_name, std::string topic, sensor_msgs::PointCloud &cloud) {
+template <class T>
+void read_pcs_bag(std::string &path, std::string &topic, T &msg)
+{
   rosbag::Bag bag;
-  bag.open(file_name, rosbag::bagmode::Read);
+  bag.open(path, rosbag::bagmode::Read);
 
   std::vector<std::string> topics;
   topics.push_back(topic);
@@ -49,8 +68,11 @@ void read_pcs_bag(std::string file_name, std::string topic, sensor_msgs::PointCl
   rosbag::View view(bag, rosbag::TopicQuery(topics));
 
   bool find = false;
-  BOOST_FOREACH (rosbag::MessageInstance const m, view) {
-    if (m.instantiate<T>() != NULL) {
+  BOOST_FOREACH (rosbag::MessageInstance const m, view)
+  {
+
+    if (m.instantiate<T>() != NULL)
+    {
       msg = *m.instantiate<T>();
       ROS_WARN("Get data!");
       find = true;
@@ -59,72 +81,72 @@ void read_pcs_bag(std::string file_name, std::string topic, sensor_msgs::PointCl
   }
   bag.close();
   if (!find)
-    ROS_WARN("Fail to find '%s' in '%s'", topic.c_str(), file_name.c_str());
+    ROS_WARN("Fail to find '%s' in '%s'", topic.c_str(), path.c_str());
 
-  
-  //should be 2
-  sensor_msgs::PointCloud2 cloud2 = read_bag<sensor_msgs::PointCloud2>(file_name, topic_name);
-  //Convert into vector of Eigen
-   cloud;
-  sensor_msgs::convertPointCloud2ToPointCloud(cloud2, cloud);
-  cloud.header = header_;
-  map_pub.publish(cloud);
-
-  return msg;
+  return;
 }
 
 /*** read pcd file ***/
+void read_pcs_pcd(std::string &path)
+{
+  
+  if (pcl::io::loadPCDFile<pcl::PointXYZ> (path, cloudMap) == -1) //* load the file
+  {
+    PCL_ERROR ("Couldn't read pcd file \n");
+  }
+
+  toPcsMsg();
+}
 
 
 /*** randomly gen points  ***/
-void gen_pcs(float bound=50, int num = 10000){
-  
+void gen_pcs(float bound = 50, int num = 10000)
+{
+
   std::default_random_engine random(time(NULL));
   std::uniform_real_distribution<double> r(-bound, bound);
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
   int loop_n = 0;
 
-  while (loop_n < num) {
-      float ax = r(random);
-      float ay = r(random);
-      float az = r(random);
-      float fx1 = bound/4.0;
-      float fy1 = bound/4.0;
-      float fy2 = bound/4.0;
-      float fz2 = bound/4.0;
-      if (ax < fx1 && ax > - fx1 && ay < fy1 && ay > - fy1) continue;
-      if (ay < fy2 && ay > - fy2 && az < fz2 && az > - fz2) continue;
-      cloud->points.push_back(pcl::PointXYZ(ax,ay,az));
-      loop_n++;
+  while (loop_n < num)
+  {
+    float ax = r(random);
+    float ay = r(random);
+    float az = r(random);
+    float fx1 = bound / 4.0;
+    float fy1 = bound / 4.0;
+    float fy2 = bound / 4.0;
+    float fz2 = bound / 4.0;
+    if (ax < fx1 && ax > -fx1 && ay < fy1 && ay > -fy1)
+      continue;
+    if (ay < fy2 && ay > -fy2 && az < fz2 && az > -fz2)
+      continue;
+    cloudMap.points.push_back(pcl::PointXYZ(ax, ay, az));
+    loop_n++;
   }
 
+  toPcsMsg();
 }
 
+void resCallback(const std_msgs::Float32 &msg)
+{
 
-
-void resCallback(const std_msgs::Float32 &msg){
-
-  _mpa.resolution_ = msg.data;
-
-  _struct_map_gen.initParams(_mpa);
-  _struct_map_gen.resetMap();
+  _grid_mpa.resolution_ = msg.data;
+  _grid_map.clearAllOcc();
+  _grid_map.fillMap(cloudMap, _inflate_ratio);
+  _grid_map.publishMap(gridCloudMap);
 
 }
 
-
-
-int i = 0;
 void pubSensedPoints()
 {
 
+  globalCloud_pcd.header.frame_id = _frame_id;
+  _all_cloud_pub.publish(globalCloud_pcd);
 
-
-
-  // if (i < 10) {
-  pcl::toROSMsg(cloudMap, globalMap_pcd);
+  pcl::toROSMsg(gridCloudMap, globalMap_pcd);
   globalMap_pcd.header.frame_id = _frame_id;
-  _all_map_cloud_pub.publish(globalMap_pcd);
-  // }
+  _all_map_pub.publish(globalMap_pcd);
+
   return;
 }
 
@@ -133,7 +155,9 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "structure_map");
   ros::NodeHandle nh("~");
 
-  _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
+  _all_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
+  _all_map_pub = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
+
   _res_sub = nh.subscribe("change_res", 10, resCallback);
 
   nh.param("map/x_size", _mpa.map_size_(0), 40.0);
@@ -142,28 +166,65 @@ int main(int argc, char **argv)
   nh.param("map/x_origin", _mpa.map_origin_(0), -20.0);
   nh.param("map/y_origin", _mpa.map_origin_(1), -20.0);
   nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
-  nh.param("map/resolution", _mpa.resolution_, 0.1);
 
+  nh.param("map/resolution", _grid_mpa.resolution_, 0.1);
   nh.param("map/frame_id", _frame_id, string("map"));
+  nh.param("map/inflate_ratio", _inflate_ratio, 0.1);
 
-  // parameters for the environment
-  nh.param("map/cylinder_ratio", _mgpa.cylinder_ratio_, 0.1);
-  nh.param("map/circle_ratio", _mgpa.circle_ratio_, 0.1);
-  nh.param("map/gate_ratio", _mgpa.gate_ratio_, 0.1);
-  nh.param("map/ellip_ratio", _mgpa.ellip_ratio_, 0.1);
-  nh.param("map/poly_ratio", _mgpa.poly_ratio_, 0.1);
-  // random number ranges
-  nh.param("params/w1", _mgpa.w1_, 0.3);
-  nh.param("params/w2", _mgpa.w2_, 1.0);
-  nh.param("params/w3", _mgpa.w3_, 2.0);
-  nh.param("params/w4", _mgpa.w4_, 3.0);
 
-  _struct_map_gen.initParams(_mpa);
-  _struct_map_gen.randomUniMapGen(_mgpa);
-  
-  _struct_map_gen.getPC(cloudMap);
+  //set up basic parameters for grid map
+  _grid_mpa.basic_mp_ = _mpa;
+  _grid_mpa.basic_mp_.min_range_ = _grid_mpa.basic_mp_.map_origin_;
+  _grid_mpa.basic_mp_.max_range_ = _grid_mpa.basic_mp_.map_origin_ + _grid_mpa.basic_mp_.map_size_;
+  _grid_mpa.basic_mp_.map_volume_ = _grid_mpa.basic_mp_.map_size_(0) * _grid_mpa.basic_mp_.map_size_(1) * _grid_mpa.basic_mp_.map_size_(2);
+
+  _grid_map.initMap(_grid_mpa);
+
+
+  // map mode
+  // 0 --- randomly generate
+  // 1 --- read the ros bag poind cloud 1
+  // 2 --- read the ros bag poind cloud 2
+  // 3 --- read pcd file
+  int mode;
+  nh.param("map/mode", mode, 0);
+
+  std::string file_path, topic_name;
+
+  nh.param("file_path", file_path, std::string("path"));
+  nh.param("bag_topic", topic_name, std::string("point_clouds_topic"));
+
+
+  switch (mode)
+  {
+  case 0:
+    gen_pcs();
+    break;
+  case 1:
+  {
+    sensor_msgs::PointCloud msg;
+    read_pcs_bag(file_path, topic_name, msg);
+    convertPointCloudToPointCloud2(msg, globalCloud_pcd);
+    pcl::fromROSMsg(globalCloud_pcd, cloudMap);
+    break;
+  }
+  case 2:
+  {
+    read_pcs_bag(file_path, topic_name, globalCloud_pcd);
+    pcl::fromROSMsg(globalCloud_pcd, cloudMap);
+    break;
+  }
+  case 3:
+    read_pcs_pcd(file_path);
+    break;
+  }
+
+  _grid_map.fillMap(cloudMap, _inflate_ratio);
+  _grid_map.publishMap(gridCloudMap);
+
+
+
   ros::Duration(0.5).sleep();
-
   ros::Rate loop_rate(10.0);
 
   while (ros::ok())

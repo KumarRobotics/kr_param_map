@@ -98,7 +98,12 @@ By increasing the occupied ratios, it's harder to generate feasible trajectories
 </p>
 
 
-You can also change the resolution online by publishing the resolution value:
+You can also change the resolution online by publishing the resolution value to:
+
+```
+/structure_map/change_res
+```
+
 
 <p align="center">
   <img src="docs/res_01.png" width = "390" height = "390"/>

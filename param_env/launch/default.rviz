@@ -7,9 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1/Offset1
-        - /Quadrotor1
         - /ParamMap1
-        - /ParamMap1/point_clouds1
       Splitter Ratio: 0.5
     Tree Height: 776
   - Class: rviz/Selection
@@ -30,7 +28,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: point_clouds
+    SyncSource: StructMap
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -83,58 +81,39 @@ Visualization Manager:
       Value: true
     - Class: rviz/Group
       Displays:
-        - Angle Tolerance: 0.10000000149011612
-          Class: rviz/Odometry
-          Covariance:
-            Orientation:
-              Alpha: 0.5
-              Color: 255; 255; 127
-              Color Style: Unique
-              Frame: Local
-              Offset: 1
-              Scale: 1
-              Value: true
-            Position:
-              Alpha: 0.30000001192092896
-              Color: 204; 51; 204
-              Scale: 1
-              Value: true
-            Value: true
-          Enabled: true
-          Keep: 100
-          Name: odom
-          Position Tolerance: 0.10000000149011612
-          Queue Size: 10
-          Shape:
-            Alpha: 1
-            Axes Length: 1
-            Axes Radius: 0.10000000149011612
-            Color: 255; 25; 0
-            Head Length: 0.30000001192092896
-            Head Radius: 0.10000000149011612
-            Shaft Length: 1
-            Shaft Radius: 0.05000000074505806
-            Value: Arrow
-          Topic: /quadrotor/odom
-          Unreliable: false
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /quadrotor/mesh_visualization/robot
-          Name: robot
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: true
-      Enabled: true
-      Name: Quadrotor
-    - Class: rviz/Group
-      Displays:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: -9999
-            Min Value: 9999
+            Max Value: 4.949999809265137
+            Min Value: 0.05000000074505806
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: AxisColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: StructMap
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.10000000149011612
+          Style: Boxes
+          Topic: /structure_map/global_gridmap
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 3.450000047683716
+            Min Value: -0.05000000074505806
             Value: true
           Axis: Z
           Channel Name: intensity
@@ -161,8 +140,8 @@ Visualization Manager:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: 19.04400062561035
-            Min Value: -0.11100000888109207
+            Max Value: 3.2324399948120117
+            Min Value: -1.4675599336624146
             Value: true
           Axis: Z
           Channel Name: intensity
@@ -188,34 +167,6 @@ Visualization Manager:
           Value: false
       Enabled: true
       Name: ParamMap
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 3.049999952316284
-        Min Value: 0.550000011920929
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: AxisColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: local_sensing
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.10000000149011612
-      Style: Flat Squares
-      Topic: /quadrotor/pcl_render_node/cloud
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 243; 243; 243
@@ -252,9 +203,9 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 2.6203439235687256
-        Y: 9.700337409973145
-        Z: 4.33320426940918
+        X: 2.314004421234131
+        Y: -2.0300395488739014
+        Z: 4.332974910736084
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -262,7 +213,7 @@ Visualization Manager:
       Near Clip Distance: 0.009999999776482582
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 3.140089750289917
+      Yaw: 3.135089874267578
     Saved: ~
 Window Geometry:
   Displays:
@@ -280,5 +231,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 2520
-  X: 4112
-  Y: 212
+  X: 5021
+  Y: 694

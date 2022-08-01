@@ -92,10 +92,17 @@ Examples:
 By increasing the occupied ratios, it's harder to generate feasible trajectories
 
 <p align="center">
-  <img src="docs/exp_cy1.png" width = "390" height = "390"/>
-  <img src="docs/exp_cy2.png" width = "390" height = "390"/>
-  <img src="docs/exp_cy3.png" width = "390" height = "390"/>
+  <img src="docs/exp_cy1.png" width = "280" height = "280"/>
+  <img src="docs/exp_cy2.png" width = "280" height = "280"/>
+  <img src="docs/exp_cy3.png" width = "280" height = "280"/>
 </p>
 
 
+You can also change the resolution online by publishing the resolution value:
 
+<p align="center">
+  <img src="docs/res_01.png" width = "390" height = "390"/>
+  <img src="docs/res_02.png" width = "390" height = "390"/>
+  <img src="docs/res_05.png" width = "390" height = "390"/>
+  <img src="docs/res_10.png" width = "390" height = "390"/>
+</p>

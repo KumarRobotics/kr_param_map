@@ -14,7 +14,7 @@ All in one! It's a revolution of map parameterization and representation for mot
 
 
 <p align="center">
-  <img src="docs/map_annotation.png" width = "390" height = "390"/>
+  <img src="docs/map_annotation.png" width = "400" height = "400"/>
 </p>
 
 
@@ -37,6 +37,18 @@ roslaunch param_env read_grid_map.launch
 ```
 
 
+<p align="center">
+  <img src="docs/pc1.png" width = "390" height = "390"/>
+  <img src="docs/pc2.png" width = "390" height = "390"/>
+</p>
+
+
+You can also set the inflation ratio to inflate the grid map
+
+```
+<param name="map/inflate_ratio" value="0.3"/>
+```
+
 
 <p align="center">
   <img src="docs/pcd.png" width = "390" height = "390"/>
@@ -44,9 +56,13 @@ roslaunch param_env read_grid_map.launch
 </p>
 
 
+The topics:
+
+- /read_grid_map/global_cloud: publish the point clouds 
+- /read_grid_map/global_gridmap: publish the center points of the grid map
+
 
 ### 1.2 Sctructed Map Generator
-
 
 
 ```
@@ -67,10 +83,19 @@ You can adjust the apprximate ratio of each element (overlapping is also countin
 Examples:
 
 <p align="center">
-  <img src="docs/exp_gate2.png" width = "390" height = "390"/>
-  <img src="docs/exp_cy2.png" width = "390" height = "390"/>
-  <img src="docs/exp_all2.png" width = "390" height = "390"/>
-  <img src="docs/cluttered.png" width = "390" height = "390"/>
+  <img src="docs/exp_gate1.png" width = "240" height = "240"/>
+  <img src="docs/exp_gate2.png" width = "240" height = "240"/>
+  <img src="docs/exp_all2.png" width = "240" height = "240"/>
+  <img src="docs/cluttered.png" width = "240" height = "240"/>
 </p>
+
+By increasing the occupied ratios, it's harder to generate feasible trajectories
+
+<p align="center">
+  <img src="docs/exp_cy1.png" width = "300" height = "300"/>
+  <img src="docs/exp_cy2.png" width = "300" height = "300"/>
+  <img src="docs/exp_cy3.png" width = "300" height = "300"/>
+</p>
+
 
 

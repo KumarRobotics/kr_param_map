@@ -29,18 +29,19 @@
            1 read the ros bag poind cloud 1
            2 read the ros bag poind cloud 2
            3 read pcd file -->
-    <param name="map/mode"  value="3" />
+    <param name="map/mode"  value="2" />
 
     <!-- mode 1 eg -->
     <!-- <param name="file_path" value="$(find param_env)/data/pc1/levine/levine.bag"/>
     <param name="bag_topic" value="/cloud"/> -->
 
     <!-- mode 2 eg -->
-    <!-- <param name="file_path" value="$(find param_env)/data/pc2/iss_obs.bag"/>
-    <param name="bag_topic" value="/obs_points"/> point clouds topic name in the bag file -->
+    <param name="file_path" value="$(find param_env)/data/pc2/iss_obs.bag"/>
+    <param name="bag_topic" value="/obs_points"/> 
+    <!-- point clouds topic name in the bag file -->
 
     <!-- mode 3 eg -->
-    <param name="file_path" value="$(find param_env)/data/pcd/cloud_0917.pcd"/>
+    <!-- <param name="file_path" value="$(find param_env)/data/pcd/cloud_0917.pcd"/> -->
 
 
 

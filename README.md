@@ -83,18 +83,18 @@ You can adjust the apprximate ratio of each element (overlapping is also countin
 Examples:
 
 <p align="center">
-  <img src="docs/exp_gate1.png" width = "240" height = "240"/>
-  <img src="docs/exp_gate2.png" width = "240" height = "240"/>
-  <img src="docs/exp_all2.png" width = "240" height = "240"/>
-  <img src="docs/cluttered.png" width = "240" height = "240"/>
+  <img src="docs/exp_gate1.png" width = "390" height = "390"/>
+  <img src="docs/exp_gate2.png" width = "390" height = "390"/>
+  <img src="docs/exp_all2.png" width = "390" height = "390"/>
+  <img src="docs/cluttered.png" width = "390" height = "390"/>
 </p>
 
 By increasing the occupied ratios, it's harder to generate feasible trajectories
 
 <p align="center">
-  <img src="docs/exp_cy1.png" width = "300" height = "300"/>
-  <img src="docs/exp_cy2.png" width = "300" height = "300"/>
-  <img src="docs/exp_cy3.png" width = "300" height = "300"/>
+  <img src="docs/exp_cy1.png" width = "390" height = "390"/>
+  <img src="docs/exp_cy2.png" width = "390" height = "390"/>
+  <img src="docs/exp_cy3.png" width = "390" height = "390"/>
 </p>
 
 

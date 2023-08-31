@@ -67,7 +67,7 @@ namespace param_env
       mp_.map_grid_size_ytz_ = mp_.map_grid_size_(1) * mp_.map_grid_size_(2);
 
       int buffer_size = mp_.map_grid_size_(0) * mp_.map_grid_size_ytz_;
-      std::cout << "buffer_size " << buffer_size << std::endl;
+      //std::cout << "buffer_size " << buffer_size << std::endl;
       occupancy_buffer_.resize(buffer_size);
       fill(occupancy_buffer_.begin(), occupancy_buffer_.end(), mp_.clamp_min_log_);
 
@@ -90,7 +90,6 @@ namespace param_env
     // get the map parameters
     void getMapParams(GridMapParams &mpa)
     {
-
       mpa = mp_;
     }
 
@@ -152,8 +151,8 @@ namespace param_env
       if (inflated != 0.0){
         double step = inflated / mp_.resolution_;
 
-        std::cout << "step is " << step << std::endl;
-        std::cout << "inflated is " << inflated << std::endl;
+        // std::cout << "step is " << step << std::endl;
+        // std::cout << "inflated is " << inflated << std::endl;
          
 
         for (auto pt : cloudMap)
@@ -243,6 +242,18 @@ namespace param_env
       // (x, y, z) -> x*ny*nz + y*nz + z
       return occupancy_buffer_[getBufferCnt(id)] > mp_.min_thrd_ ? 1 : 0;
     }
+
+    // check if the pos is occupied
+    int isOcc(const Eigen::Vector3i &id)
+    {
+      if (!isInMap(id)){
+        return -1;
+      }
+        
+      // (x, y, z) -> x*ny*nz + y*nz + z
+      return occupancy_buffer_[getBufferCnt(id)] > mp_.min_thrd_ ? 1 : 0;
+    }
+
 
     // check if the pos is in map range
     bool isInMap(const Eigen::Vector3d &pos)

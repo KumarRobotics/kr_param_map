@@ -15,5 +15,6 @@
   <depend>rosbag</depend>
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
-
+  <depend>sdl</depend>
+  <depend>sdl-image</depend>
 </package>

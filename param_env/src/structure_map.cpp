@@ -38,9 +38,10 @@ param_env::GridMapParams _grid_mpa;
 param_env::MapGenParams _map_gen_pa;
 
 int _samples_on_map = 100;
-int _num = 0.0;
-bool _save_map = false;
+int _num = 0.0, _initial_num;
+bool _save_map = false, _auto_gen = false;
 std::string _dataset_path;
+double _seed; //random seed
 
 
 void pubSensedPoints()
@@ -51,7 +52,7 @@ void pubSensedPoints()
 
   if(_save_map)
   {
-    pcl::io::savePCDFileASCII(_dataset_path + std::string("pt") + std::to_string(_num) + std::string(".pcd"), cloudMap);
+    pcl::io::savePCDFileASCII(_dataset_path + std::string("pt") + std::to_string(_initial_num + _num) + std::string(".pcd"), cloudMap);
   }
 
   return;
@@ -65,14 +66,15 @@ void resCallback(const std_msgs::Float32 &msg)
   _struct_map_gen.initParams(_grid_mpa);
   _struct_map_gen.resetMap();
   _struct_map_gen.getPC(cloudMap);
+
+  pubSensedPoints();
 }
 
 void genMapCallback(const std_msgs::Bool &msg)
-{
-
+{  
+  _seed += 1.0;
   _struct_map_gen.clear();
-  _struct_map_gen.initParams(_grid_mpa);
-  _struct_map_gen.change_ratios();
+  _struct_map_gen.change_ratios(_seed);
   _struct_map_gen.getPC(cloudMap);
   _num += 1;
 
@@ -86,9 +88,9 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "structure_map");
   ros::NodeHandle nh("~");
 
-  _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
+  _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
 
-  _res_sub = nh.subscribe("change_res", 10, resCallback);
+  _res_sub     = nh.subscribe("change_res", 10, resCallback);
   _gen_map_sub = nh.subscribe("change_map", 10, genMapCallback);
 
   param_env::BasicMapParams _mpa;
@@ -104,6 +106,7 @@ int main(int argc, char **argv)
   _grid_mpa.basic_mp_ = _mpa;
 
   nh.param("map/frame_id", _frame_id, string("map"));
+  nh.param("map/auto_change", _auto_gen, false);
 
   // parameters for the environment
   nh.param("params/cylinder_ratio", _map_gen_pa.cylinder_ratio_, 0.1);
@@ -117,15 +120,17 @@ int main(int argc, char **argv)
   nh.param("params/w3", _map_gen_pa.w3_, 2.0);
   nh.param("params/w4", _map_gen_pa.w4_, 3.0);
   nh.param("params/add_noise", _map_gen_pa.add_noise_, false);
+  nh.param("params/seed", _seed, 1.0);
+
 
   nh.param("dataset/save_map", _save_map, false);
-  nh.param("samples_on_map", _samples_on_map, 0);
-  nh.param("dataset/start_index", _num, 0);
+  nh.param("dataset/samples_num", _samples_on_map, 0);
+  nh.param("dataset/start_index", _initial_num, 0);
   nh.param("dataset/path", _dataset_path, std::string("path"));
 
 
   // origin mapsize resolution isrequired
-  ros::Rate loop_rate(10.0);
+  ros::Rate loop_rate(5.0);
 
   if(opendir(_dataset_path.c_str()) == NULL)
   {
@@ -133,16 +138,28 @@ int main(int argc, char **argv)
     system(cmd.c_str());
   }
 
-  _struct_map_gen.initParams(_grid_mpa);
-  _struct_map_gen.randomUniMapGen(_map_gen_pa);
-  _struct_map_gen.getPC(cloudMap);
-
   ros::Duration(0.5).sleep();
 
+  
+  _struct_map_gen.initParams(_grid_mpa);
+  _struct_map_gen.randomUniMapGen(_map_gen_pa, _seed);
+  _struct_map_gen.getPC(cloudMap);
+  _num += 1;
   pubSensedPoints();
+  loop_rate.sleep();
+
   
   while (ros::ok())
   {
+    if (_auto_gen && _num < _samples_on_map)
+    {
+      _seed += 1.0;
+      _struct_map_gen.clear();
+      _struct_map_gen.change_ratios(_seed);
+      _struct_map_gen.getPC(cloudMap);
+      _num += 1;
+      pubSensedPoints();
+    }
     ros::spinOnce();
     loop_rate.sleep();
   }

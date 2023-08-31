@@ -1,15 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
 project(param_env)
 
-set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_FLAGS "-std=c++11")
-ADD_COMPILE_OPTIONS(-std=c++11 )
-ADD_COMPILE_OPTIONS(-std=c++14 )
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(PCL 1.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
-
+find_package(SDL REQUIRED)
+find_package(SDL_image REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -45,6 +42,10 @@ add_executable (read_grid_map src/read_grid_map.cpp)
 
 target_link_libraries(read_grid_map
   ${catkin_LIBRARIES}
-  ${PCL_LIBRARIES})
+  ${PCL_LIBRARIES}
+  ${SDL_LIBRARY}
+  ${SDL_IMAGE_LIBRARIES})
 
+add_dependencies(read_grid_map ${catkin_EXPORTED_TARGETS})
 
+  

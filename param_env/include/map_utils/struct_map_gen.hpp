@@ -48,7 +48,7 @@ namespace param_env
     param_env::GridMapParams mpa_;
     param_env::MapGenParams mgpa_;
 
-    random_device rd;
+    default_random_engine eng;
     uniform_real_distribution<double> rand_theta, rand_w, rand_h, rand_cw, rand_radiu;
 
   public:
@@ -56,6 +56,12 @@ namespace param_env
     StructMapGenerator() = default;
 
     ~StructMapGenerator() {}
+
+
+    void getGridMap(param_env::GridMap& grid_map)
+    {
+      grid_map = grid_map_;
+    }
 
     template<class T>
     int updatePts(T &geo_rep)
@@ -72,7 +78,6 @@ namespace param_env
 
 
       // add randorm noise
-      default_random_engine eng(rd());
       std::normal_distribution<double> dist(0.0, mgpa_.w1_);
       std::vector<Eigen::Vector3d> total_pts;
 
@@ -196,6 +201,8 @@ namespace param_env
     void clear(){
 
       cloudMap_.clear();
+      grid_map_.clearAllOcc();
+      geo_map_.clearAll();
 
     }
     //it should be called after the random map gene
@@ -223,10 +230,9 @@ namespace param_env
       traversePts(rect_gate);
     }
     
-    void change_ratios()
+    void change_ratios(double &seed)
     {
-
-      default_random_engine eng(rd());
+      eng.seed(seed);
 
       mgpa_.cylinder_ratio_ = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
       mgpa_.circle_ratio_   = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
@@ -237,7 +243,7 @@ namespace param_env
       generate();
     }
 
-    void randomUniMapGen(param_env::MapGenParams &mgpa)
+    void randomUniMapGen(param_env::MapGenParams &mgpa, double &seed)
     {
 
       mgpa_ = mgpa;
@@ -246,7 +252,7 @@ namespace param_env
       rand_cw = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w3_);
       rand_radiu = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w4_);
 
-
+      eng.seed(seed);
       generate();
 
     }
@@ -256,7 +262,6 @@ namespace param_env
     void generate()
     {
 
-      default_random_engine eng(rd());
       grid_map_.setUniRand(eng);
 
       int all_grids = ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));

@@ -63,7 +63,7 @@ namespace geo_utils
     struct filterLess
     {
         inline bool operator()(const Eigen::Vector3d &l,
-                               const Eigen::Vector3d &r)
+                               const Eigen::Vector3d &r) const
         {
             return l(0) < r(0) ||
                    (l(0) == r(0) &&
@@ -72,6 +72,8 @@ namespace geo_utils
                       l(2) < r(2))));
         }
     };
+
+
 
     inline void filterVs(const Eigen::Matrix3Xd &rV,
                          const double &epsilon,
@@ -82,10 +84,10 @@ namespace geo_utils
         std::set<Eigen::Vector3d, filterLess> filter;
         fV = rV;
         int offset = 0;
-        Eigen::Vector3d quanti;
         for (int i = 0; i < rV.cols(); i++)
         {
-            quanti = (rV.col(i) / res).array().round();
+            const Eigen::Vector3d quanti = (rV.col(i) / res).array().round();
+
             if (filter.find(quanti) == filter.end())
             {
                 filter.insert(quanti);

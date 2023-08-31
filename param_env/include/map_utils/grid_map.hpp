@@ -30,7 +30,6 @@ namespace param_env
     double clamp_min_log_ = 0.01;
     double clamp_max_log_ = 0.99;
     double min_thrd_ = 0.80;
-
   };
 
   class GridMap

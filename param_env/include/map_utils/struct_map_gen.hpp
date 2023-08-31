@@ -23,7 +23,7 @@
 #include <map_utils/grid_map.hpp>
 #include <map_utils/geo_map.hpp>
 
-
+#include <iterator>
 
 namespace param_env
 {
@@ -33,6 +33,7 @@ namespace param_env
     /* parameters for map generator */
     double cylinder_ratio_, circle_ratio_, gate_ratio_, ellip_ratio_, poly_ratio_;
     double w1_, w2_, w3_, w4_;
+    bool add_noise_ = false;
   };
   
   class StructMapGenerator
@@ -45,7 +46,6 @@ namespace param_env
     param_env::GeoMap geo_map_;
 
     param_env::GridMapParams mpa_;
-
     param_env::MapGenParams mgpa_;
 
     random_device rd;
@@ -69,6 +69,12 @@ namespace param_env
       int widNum1 = ceil(bound(0) / mpa_.resolution_);
       int widNum2 = ceil(bound(1) / mpa_.resolution_);
       int widNum3 = ceil(bound(2) / mpa_.resolution_);
+
+
+      // add randorm noise
+      default_random_engine eng(rd());
+      std::normal_distribution<double> dist(0.0, mgpa_.w1_);
+      std::vector<Eigen::Vector3d> total_pts;
 
       for (int r = -widNum1; r < widNum1; r++)
       {
@@ -100,9 +106,42 @@ namespace param_env
 
             cloudMap_.points.push_back(pt_random);
             cur_grids += 1;
+
+            total_pts.push_back(ob_pt);
           }
         }
-      }  
+
+      }
+
+      if (mgpa_.add_noise_)
+      {
+
+        for (auto ob_pt: total_pts)
+        {
+          double ran = (float) rand()/RAND_MAX; 
+          if (ran < mgpa_.w1_)
+          {
+            ob_pt(0) = ob_pt(0) + dist(eng);
+            ob_pt(1) = ob_pt(1) + dist(eng);
+            ob_pt(2) = ob_pt(2) + dist(eng);
+
+
+            if (!grid_map_.isInMap(ob_pt))
+            {
+              continue;
+            }
+            grid_map_.setOcc(ob_pt);
+            pcl::PointXYZ pt_random;
+            
+
+            pt_random.x = ob_pt(0);
+            pt_random.y = ob_pt(1);
+            pt_random.z = ob_pt(2);
+            cloudMap_.points.push_back(pt_random);
+          }
+        }
+      }
+
 
       return cur_grids;
     }
@@ -154,9 +193,14 @@ namespace param_env
 
     }
 
+    void clear(){
 
+      cloudMap_.clear();
+
+    }
     //it should be called after the random map gene
-    void resetMap(){
+    void resetMap()
+    {
 
       cloudMap_.clear();
 
@@ -178,17 +222,41 @@ namespace param_env
       traversePts(circle_gate);
       traversePts(rect_gate);
     }
+    
+    void change_ratios()
+    {
 
+      default_random_engine eng(rd());
+
+      mgpa_.cylinder_ratio_ = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.circle_ratio_   = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
+      mgpa_.gate_ratio_     = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
+      mgpa_.ellip_ratio_    = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
+      mgpa_.poly_ratio_     = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
+
+      generate();
+    }
 
     void randomUniMapGen(param_env::MapGenParams &mgpa)
     {
-      Eigen::Vector3d bound;
-      Eigen::Vector3d cpt; // center points, object points
 
       mgpa_ = mgpa;
 
+      rand_w = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w2_);
+      rand_cw = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w3_);
+      rand_radiu = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w4_);
+
+
+      generate();
+
+    }
+
+
+
+    void generate()
+    {
+
       default_random_engine eng(rd());
-      
       grid_map_.setUniRand(eng);
 
       int all_grids = ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));
@@ -198,10 +266,9 @@ namespace param_env
       int ellip_grids    = ceil(all_grids * mgpa_.ellip_ratio_);
       int poly_grids     = ceil(all_grids * mgpa_.poly_ratio_);
 
-      rand_w = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w2_);
-      rand_cw = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w3_);
-      rand_radiu = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w4_);
 
+      Eigen::Vector3d bound;
+      Eigen::Vector3d cpt; // center points, object points
 
       // generate cylinders
       int cur_grids = 0;

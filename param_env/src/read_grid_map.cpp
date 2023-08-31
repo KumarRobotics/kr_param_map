@@ -50,11 +50,6 @@ void toPcsMsg()
   pcl::toROSMsg(cloudMap, globalCloud_pcd);
 }
 
-
-
-
-
-
 /*** read ros bag ***/
 template <class T>
 void read_pcs_bag(std::string &path, std::string &topic, T &msg)

@@ -46,9 +46,9 @@ pcl::PointCloud<pcl::PointXYZ> cloudMap, gridCloudMap;
 param_env::GridMapParams _grid_mpa;
 param_env::GridMap _grid_map;
 param_env::BasicMapParams _mpa;
-double _inflate_ratio = 0.0;
+double _inflate_radius = 0.0;
 std::filesystem::directory_iterator file_iter;
-bool _auto_gen = false, _use_folfer = false;
+bool _auto_gen = false, _use_folfer = false, _publish_grid_centers = false;
 
 //*** image params ***/
 int _negate;
@@ -62,33 +62,21 @@ void toPcsMsg()
   pcl::toROSMsg(cloudMap, globalCloud_pcd);
 }
 
-void pubSensedPoints()
-{
-
-  globalCloud_pcd.header.frame_id = _frame_id;
-  _all_cloud_pub.publish(globalCloud_pcd);
-
-  pcl::toROSMsg(gridCloudMap, globalMap_pcd);
-  globalMap_pcd.header.frame_id = _frame_id;
-  _all_map_pub.publish(globalMap_pcd);
-
-  return;
-}
-
-
 /*** read image map ***/
-void read_img(std::string &path) {
+void read_img(std::string &path)
+{
   std::cout << path << std::endl;
 
-  //cloudMap
-  SDL_Surface* img;
+  // cloudMap
+  SDL_Surface *img;
 
-  unsigned char* p;
+  unsigned char *p;
   unsigned char value;
   int avg_channels, alpha, color_sum;
 
   // Load the image using SDL.  If we get NULL back, the image load failed.
-  if (!(img = IMG_Load(path.c_str()))) {
+  if (!(img = IMG_Load(path.c_str())))
+  {
     std::string errmsg = std::string("failed to open image file \"") +
                          std::string(path.c_str()) + std::string("\": ") +
                          IMG_GetError();
@@ -100,13 +88,12 @@ void read_img(std::string &path) {
   int n_channels = img->format->BytesPerPixel;
 
   // Copy the image data into the map structure
-  int dim_x = int(_mpa.map_size_(1)/_grid_mpa.resolution_);
-  int dim_y = int(_mpa.map_size_(0)/_grid_mpa.resolution_);
-  int dim_z = int(_mpa.map_size_(2)/_grid_mpa.resolution_);
+  int dim_x = int(_mpa.map_size_(1) / _grid_mpa.resolution_);
+  int dim_y = int(_mpa.map_size_(0) / _grid_mpa.resolution_);
+  int dim_z = int(_mpa.map_size_(2) / _grid_mpa.resolution_);
 
   double ratio_map_to_img_x = img->w / dim_x;
   double ratio_map_to_img_y = img->h / dim_y;
-
 
   // std::cout << "dim_x" <<dim_x << std::endl;
   // std::cout << "dim_y" << dim_y << std::endl;
@@ -116,19 +103,23 @@ void read_img(std::string &path) {
   // NOTE: Trinary mode still overrides here to preserve existing behavior.
   // Alpha will be averaged in with color channels when using trinary mode.
   avg_channels = n_channels;
-  
+
   Eigen::Vector3d pos;
   // Copy pixel data into the map structure
-  unsigned char* pixels = (unsigned char*)(img->pixels);
-  for (unsigned int m = 0; m < dim_z; m++) {
-    for (unsigned int j = 0; j < dim_y; j++) {
-      for (unsigned int i = 0; i < dim_x; i++) {
+  unsigned char *pixels = (unsigned char *)(img->pixels);
+  for (unsigned int m = 0; m < dim_z; m++)
+  {
+    for (unsigned int j = 0; j < dim_y; j++)
+    {
+      for (unsigned int i = 0; i < dim_x; i++)
+      {
         int j_px = int(j * ratio_map_to_img_y);
         int i_px = int(i * ratio_map_to_img_x);
         // Compute mean of RGB for this pixel
         p = pixels + j_px * rowstride + i_px * n_channels;
         color_sum = 0;
-        for (unsigned int k = 0; k < avg_channels; k++) color_sum += *(p + (k));
+        for (unsigned int k = 0; k < avg_channels; k++)
+          color_sum += *(p + (k));
         double color_avg = color_sum / (double)avg_channels;
 
         if (n_channels == 1)
@@ -136,7 +127,8 @@ void read_img(std::string &path) {
         else
           alpha = *(p + n_channels - 1);
 
-        if (_negate == 1) color_avg = 255 - color_avg;
+        if (_negate == 1)
+          color_avg = 255 - color_avg;
 
         // If negate is true, we consider blacker pixels free, and whiter
         // pixels occupied.  Otherwise, it's vice versa.
@@ -146,19 +138,16 @@ void read_img(std::string &path) {
         // produce a map with cell (0,0) in the lower-left corner.
         if (occ > _occ_th)
         {
-          _grid_map.indexToPos(Eigen::Vector3i(dim_y - j - 1,i, m), pos);
+          _grid_map.indexToPos(Eigen::Vector3i(dim_y - j - 1, i, m), pos);
           cloudMap.points.push_back(pcl::PointXYZ(pos(0), pos(1), pos(2)));
         }
-
       }
     }
   }
 
   SDL_FreeSurface(img);
   toPcsMsg();
-
 }
-
 
 /*** read ros bag ***/
 template <class T>
@@ -194,15 +183,14 @@ void read_pcs_bag(std::string &path, std::string &topic, T &msg)
 /*** read pcd file ***/
 void read_pcs_pcd(std::string &path)
 {
-  
-  if (pcl::io::loadPCDFile<pcl::PointXYZ> (path, cloudMap) == -1) //* load the file
+
+  if (pcl::io::loadPCDFile<pcl::PointXYZ>(path, cloudMap) == -1) //* load the file
   {
-    PCL_ERROR ("Couldn't read pcd file \n");
+    PCL_ERROR("Couldn't read pcd file \n");
   }
 
   toPcsMsg();
 }
-
 
 /*** randomly gen points  ***/
 void gen_pcs(float bound = 50, int num = 10000)
@@ -230,6 +218,25 @@ void gen_pcs(float bound = 50, int num = 10000)
   }
 
   toPcsMsg();
+}
+
+void pubSensedPoints()
+{
+
+  globalCloud_pcd.header.frame_id = _frame_id;
+  _all_cloud_pub.publish(globalCloud_pcd);
+
+  if (_publish_grid_centers)
+  {
+    _grid_map.fillMap(cloudMap, _inflate_radius);
+    _grid_map.publishMap(gridCloudMap);
+
+    pcl::toROSMsg(gridCloudMap, globalMap_pcd);
+    globalMap_pcd.header.frame_id = _frame_id;
+    _all_map_pub.publish(globalMap_pcd);
+
+  }
+
 }
 
 void readMap(std::string file_path)
@@ -263,13 +270,12 @@ void readMap(std::string file_path)
     break;
   }
 
-  _grid_map.fillMap(cloudMap, _inflate_ratio);
-  _grid_map.publishMap(gridCloudMap);
-
   pubSensedPoints();
+  return;
 }
 
-bool changeMap()
+
+bool nextFile()
 {
   file_iter++;
   if (file_iter == std::filesystem::directory_iterator())
@@ -277,40 +283,35 @@ bool changeMap()
     ROS_INFO("No more files in directory");
     return false;
   }
-  
   cloudMap.clear();
   _grid_map.clearAllOcc();
   readMap(file_iter->path());
   return true;
 }
 
-
 void resCallback(const std_msgs::Float32 &msg)
 {
-
   _grid_mpa.resolution_ = msg.data;
-  _grid_map.clearAllOcc();
-  _grid_map.fillMap(cloudMap, _inflate_ratio);
-  _grid_map.publishMap(gridCloudMap);
+  _grid_map.initMap(_grid_mpa);
 
+  pubSensedPoints();
+  
 }
 
 void genMapCallback(const std_msgs::Bool &msg)
-{  
-
-  changeMap();
-
+{
+  nextFile();
 }
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "structure_map");
+  ros::init(argc, argv, "param_map");
   ros::NodeHandle nh("~");
 
   _all_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
-  _all_map_pub = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
+  _all_map_pub   = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
 
-  _res_sub     = nh.subscribe("change_res", 10, resCallback);
+  _res_sub = nh.subscribe("change_res", 10, resCallback);
   _gen_map_sub = nh.subscribe("change_map", 10, genMapCallback);
 
   nh.param("map/x_size", _mpa.map_size_(0), 40.0);
@@ -322,24 +323,22 @@ int main(int argc, char **argv)
 
   nh.param("map/resolution", _grid_mpa.resolution_, 0.1);
   nh.param("map/frame_id", _frame_id, string("map"));
-  nh.param("map/inflate_ratio", _inflate_ratio, 0.1);
+  nh.param("map/inflate_radius", _inflate_radius, 0.1);
 
   nh.param("map/auto_change", _auto_gen, false);
+  nh.param("map/publish_grid_centers", _publish_grid_centers, false);
 
-  //set up basic parameters for grid map
+  // set up basic parameters for grid map
   _grid_mpa.basic_mp_ = _mpa;
   _grid_mpa.basic_mp_.min_range_ = _grid_mpa.basic_mp_.map_origin_;
   _grid_mpa.basic_mp_.max_range_ = _grid_mpa.basic_mp_.map_origin_ + _grid_mpa.basic_mp_.map_size_;
   _grid_mpa.basic_mp_.map_volume_ = _grid_mpa.basic_mp_.map_size_(0) * _grid_mpa.basic_mp_.map_size_(1) * _grid_mpa.basic_mp_.map_size_(2);
   _grid_map.initMap(_grid_mpa);
 
-
   nh.param("bag_topic", topic_name, std::string("point_clouds_topic"));
 
   nh.param("img/negate", _negate, 0);
   nh.param("img/occ_th", _occ_th, 0.65);
-
-
 
   // map mode
   // 0 --- randomly generate
@@ -354,12 +353,12 @@ int main(int argc, char **argv)
   nh.param("folder_path", folder_path, std::string(""));
   nh.param("use_folfer", _use_folfer, false);
 
-
   if (_use_folfer)
   {
     file_iter = std::filesystem::directory_iterator(folder_path);
     readMap(file_iter->path());
-  }else
+  }
+  else
   {
     nh.param("file_path", file_path, std::string("path"));
     readMap(file_path);
@@ -369,12 +368,11 @@ int main(int argc, char **argv)
   ros::Rate loop_rate(10.0);
   bool success = true;
 
-
   while (ros::ok())
   {
-    if(_auto_gen && _use_folfer && success)
+    if (_auto_gen && _use_folfer && success)
     {
-      success = changeMap();
+      success = nextFile();
     }
 
     ros::spinOnce();

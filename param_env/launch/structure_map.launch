@@ -22,7 +22,7 @@
     <param name="map/y_origin"   value="$(arg map_y_origin)"/>
     <param name="map/z_origin"   value="$(arg map_z_origin)"/>
 
-    <param name="map/resolution" value="0.2"/>        
+    <param name="map/resolution" value="0.1"/>        
     <param name="map/frame_id"     value="$(arg map_frame_id)" />
 
     <!-- randomly change the map without trigger -->
@@ -41,7 +41,7 @@
     <param name="params/w4" value="2.0"/>
     
     <!-- add gaussion noise with param/w1 range on it -->
-    <param name="params/add_noise" value="true"/>
+    <param name="params/add_noise" value="false"/>
     <param name="params/seed" value="0.5"/>
 
     <!-- to generate map dataset in this folder -->

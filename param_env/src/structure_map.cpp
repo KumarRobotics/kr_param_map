@@ -85,7 +85,7 @@ void genMapCallback(const std_msgs::Bool &msg)
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "structure_map");
+  ros::init(argc, argv, "param_map");
   ros::NodeHandle nh("~");
 
   _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);

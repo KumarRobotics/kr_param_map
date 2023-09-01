@@ -1,7 +1,7 @@
 # Kumar Lab Parameterized Map
 
 
-All in one! It's a revolution in map parameterization and representation for motion planning! Let's see.
+All in one! It's a revolution of map parameterization and representation for motion planning! Let's see.
 
 
 ## 0. Setup
@@ -20,7 +20,7 @@ All in one! It's a revolution in map parameterization and representation for mot
 
 ### 1.1 Grid Map Reader
 
-It supports file format as:
+It support file format as:
 
 - image map: .png 
 - rosbag: sensor_msgs::PointCloud
@@ -40,7 +40,7 @@ The image map are converted into fake 3d.
   <img src="docs/img_maze1.png" width = "390" height = "390"/>
 </p>
 
-The point cloud in bags is shown as:
+The pointcloud in bags is shown as:
 
 <p align="center">
   <img src="docs/pc1.png" width = "390" height = "390"/>
@@ -48,12 +48,11 @@ The point cloud in bags is shown as:
 </p>
 
 
-You can also set the inflation ratio to inflate the grid map
+You can also set the inflation (m) to inflate the grid map
 
 ```
-<param name="map/inflate_ratio" value="0.3"/>
+<param name="map/inflate_radius" value="0.3"/>
 ```
-
 
 <p align="center">
   <img src="docs/pcd.png" width = "390" height = "390"/>
@@ -64,7 +63,7 @@ You can also set the inflation ratio to inflate the grid map
 The topics:
 
 - /read_grid_map/global_cloud: publish the point clouds 
-- /read_grid_map/global_gridmap: publish the center points of the grid map
+- /read_grid_map/global_gridmap: publish the center points of the grid map with inflation
 
 
 ### 1.2 Sctructed Map Generator
@@ -74,7 +73,7 @@ The topics:
 roslaunch param_env structure_map.launch
 ```
 
-You can adjust the approximate ratio of each element (overlapping is also counting now) in the launch file 
+You can adjust the apprximate ratio of each element (overlapping is also counting now) in the launch file 
 
 ```
 <param name="map/cylinder_ratio" value="0.10" type="double"/>
@@ -96,12 +95,12 @@ Examples:
 By increasing the occupied ratios, it's harder to generate feasible trajectories
 
 <p align="center">
-  <img src="docs/exp_cy1.png" width = "270" height = "270"/>
-  <img src="docs/exp_cy2.png" width = "270" height = "270"/>
-  <img src="docs/exp_cy3.png" width = "270" height = "270"/>
+  <img src="docs/exp_cy1.png" width = "280" height = "280"/>
+  <img src="docs/exp_cy2.png" width = "280" height = "280"/>
+  <img src="docs/exp_cy3.png" width = "280" height = "280"/>
 </p>
 
-You can also enable noise around the obstacles by setting:
+You can also enable noise around the obstalce by setting:
 
 ```
   <param name="params/add_noise" value="true"/>
@@ -135,11 +134,10 @@ or
 </p>
 
 
-For read maps, you can publish all the maps by setting the folder path in the launch file:
+For read maps, you can publish all the maps by setting folder path in launch file
 
 ```
  <param name="folder_path" value="$(find param_env)/data/img/maze/"/>
- <param name="use_folfer"  value="true"/>
 
 ```
 
@@ -157,17 +155,10 @@ or
 
 to trigger the function.
 
-If you want to auto-change the map, set it to true:
-
-```
-    <param name="map/auto_change"    value="true"/>
-```
-
-
 
 ### 1.4 Dataset generation 
 
-If you want to save the map (in pcd format), set "dataset/save_map" to true, and set the data number to "dataset/samples_num".
+If you want to save map, set "dataset/save_map" to true, and set the data number in "dataset/samples_num".
 
 ```
     <param name="dataset/save_map"    value="true"/>

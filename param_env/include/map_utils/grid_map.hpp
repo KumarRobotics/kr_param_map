@@ -23,7 +23,6 @@ namespace param_env
     /* deducted paramaters */
     Eigen::Vector3i map_grid_size_;         // map range in index
     int map_grid_size_ytz_;
-    Eigen::Vector3i map_min_idx_, map_max_idx_;
     double inv_resolution_;
 
     /*advanced parameters*/
@@ -67,7 +66,7 @@ namespace param_env
       mp_.map_grid_size_ytz_ = mp_.map_grid_size_(1) * mp_.map_grid_size_(2);
 
       int buffer_size = mp_.map_grid_size_(0) * mp_.map_grid_size_ytz_;
-      //std::cout << "buffer_size " << buffer_size << std::endl;
+      //std::cout << "mp_.map_grid_size_ " << mp_.map_grid_size_ << std::endl;
       occupancy_buffer_.resize(buffer_size);
       fill(occupancy_buffer_.begin(), occupancy_buffer_.end(), mp_.clamp_min_log_);
 
@@ -146,35 +145,67 @@ namespace param_env
     // fill occupancies with point clouds
     void fillMap(pcl::PointCloud<pcl::PointXYZ> &cloudMap, double &inflated)
     {
-      Eigen::Vector3d ob_pt;
+      Eigen::Vector3d ob_pt, infla_pt;
 
-      if (inflated != 0.0){
-        double step = inflated / mp_.resolution_;
+      if (inflated > 0.0){
+        int step = std::ceil(inflated / mp_.resolution_);
 
-        // std::cout << "step is " << step << std::endl;
-        // std::cout << "inflated is " << inflated << std::endl;
-         
-
-        for (auto pt : cloudMap)
+        for (auto &pt : cloudMap)
         {
           ob_pt << pt.x, pt.y, pt.z;
 
-          for (double x = -inflated; x <= inflated; x+=mp_.resolution_)
-            for (double y = -inflated; y <= inflated; y+=mp_.resolution_)
-              for (double z = -inflated; z <= inflated; z+=mp_.resolution_) {
-                setOcc(Eigen::Vector3d(ob_pt(0) + x, ob_pt(1) + y, ob_pt(2) + z));
+          for (int step_x = -step; step_x <= step; step_x++)
+          {
+            for (int step_y = -step; step_y <= step; step_y++)
+            {
+              for (int step_z = -step; step_z <= step; step_z++)
+              {
+                infla_pt << ob_pt(0) + step_x * mp_.resolution_, 
+                            ob_pt(1) + step_y * mp_.resolution_, 
+                            ob_pt(2) + step_z * mp_.resolution_;
+
+                if (!isOcc(infla_pt))
+                {
+                  setOcc(infla_pt);
+                }
+
               }
+            }
+          }
         }
 
       }else{
 
-        for (auto pt : cloudMap)
+        for (auto &pt : cloudMap)
         {
           ob_pt << pt.x, pt.y, pt.z;
-          setOcc(ob_pt);
+          if (!isOcc(ob_pt))
+          {
+            setOcc(ob_pt);
+          }
         }
 
       }
+
+    }
+
+    void getObsPts(pcl::PointCloud<pcl::PointXYZ> &cloudMap)
+    {
+      pcl::PointXYZ pt;
+      cloudMap.clear();
+      for (auto &pos : obs_pts)
+      {
+        pt.x = pos(0);
+        pt.y = pos(1);
+        pt.z = pos(2);
+        cloudMap.push_back(pt);
+      }
+
+      cloudMap.width = cloudMap.points.size();
+      cloudMap.height = 1;
+      cloudMap.is_dense = true;
+      return;
+
 
     }
 
@@ -185,24 +216,16 @@ namespace param_env
       pcl::PointXYZ pt;
       cloudMap.clear();
 
-      Eigen::Vector3d min_pos = mp_.basic_mp_.min_range_;
       Eigen::Vector3d max_pos = mp_.basic_mp_.max_range_;
+      Eigen::Vector3d pos;
 
-      Eigen::Vector3i min_id, max_id;
-
-      posToIndex(min_pos, min_id);
-
-      double temp = mp_.resolution_ / 2;
-      posToIndex(max_pos - Eigen::Vector3d(temp, temp, temp), max_id);
-
-      for (int x = min_id(0); x <= max_id(0); ++x)
-        for (int y = min_id(1); y <= max_id(1); ++y)
-          for (int z = min_id(2); z <= max_id(2); ++z)
+      for (int x = 0; x < mp_.map_grid_size_(0); ++x)
+        for (int y = 0; y < mp_.map_grid_size_(1); ++y)
+          for (int z = 0; z < mp_.map_grid_size_(2); ++z)
           {
             if (occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] > mp_.min_thrd_) 
             {
               //std::cout << occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] << std::endl;
-              Eigen::Vector3d pos;
               indexToPos(Eigen::Vector3i(x, y, z), pos);
 
               pt.x = pos(0);

@@ -13,7 +13,7 @@
 
   <node pkg ="param_env" name ="read_grid_map" type ="read_grid_map" output = "screen">    
     <!-- this is the map init position, not the odom-->
-    <remap from="~global_cloud" to="$(arg cloud)"/>
+    <remap from="~global_gridmap" to="$(arg cloud)"/>
 
     <param name="map/x_size"     value="$(arg map_size_x)" />
     <param name="map/y_size"     value="$(arg map_size_y)" />
@@ -24,12 +24,15 @@
 
     <param name="map/resolution"    value="0.1"/>        
     <param name="map/frame_id"      value="$(arg map_frame_id)" />
-    <param name="map/inflate_ratio" value="0.3"/>
+    <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
 
     <!-- randomly change the map without trigger -->
     <param name="map/auto_change"    value="true"/>
 
-     <!-- map mode 
+    <!-- another topic to publish point with inflation-->
+    <param name="map/publish_grid_centers"  value="true"/>
+
+    <!-- map mode 
            0 randomly generate
            1 read the image
            2 read the ros bag poind cloud 1

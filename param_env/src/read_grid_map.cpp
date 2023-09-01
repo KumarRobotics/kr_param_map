@@ -88,8 +88,8 @@ void read_img(std::string &path)
   int n_channels = img->format->BytesPerPixel;
 
   // Copy the image data into the map structure
-  int dim_x = int(_mpa.map_size_(1) / _grid_mpa.resolution_);
-  int dim_y = int(_mpa.map_size_(0) / _grid_mpa.resolution_);
+  int dim_x = int(_mpa.map_size_(0) / _grid_mpa.resolution_);
+  int dim_y = int(_mpa.map_size_(1) / _grid_mpa.resolution_);
   int dim_z = int(_mpa.map_size_(2) / _grid_mpa.resolution_);
 
   double ratio_map_to_img_x = img->w / dim_x;
@@ -138,7 +138,7 @@ void read_img(std::string &path)
         // produce a map with cell (0,0) in the lower-left corner.
         if (occ > _occ_th)
         {
-          _grid_map.indexToPos(Eigen::Vector3i(dim_y - j - 1, i, m), pos);
+          _grid_map.indexToPos(Eigen::Vector3i(i, dim_y - j - 1, m), pos);
           cloudMap.points.push_back(pcl::PointXYZ(pos(0), pos(1), pos(2)));
         }
       }
@@ -353,6 +353,9 @@ int main(int argc, char **argv)
   nh.param("folder_path", folder_path, std::string(""));
   nh.param("use_folfer", _use_folfer, false);
 
+  ros::Duration(0.5).sleep();
+
+
   if (_use_folfer)
   {
     file_iter = std::filesystem::directory_iterator(folder_path);
@@ -364,7 +367,6 @@ int main(int argc, char **argv)
     readMap(file_path);
   }
 
-  ros::Duration(0.5).sleep();
   ros::Rate loop_rate(10.0);
   bool success = true;
 

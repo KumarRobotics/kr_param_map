@@ -33,7 +33,7 @@ set the map mode and file path in "read_grid_map.launch" and launch
 roslaunch param_env read_grid_map.launch
 ```
 
-The image map are converted into fake 3d.
+The 2D image map are converted into 3d, with z axis having the same content. Maze images are generated with the help of [Multi Solution Maze Generator](https://github.com/shaoyifei96/multi_solution_mazegenerator)
 
 <p align="center">
   <img src="docs/img_map1.png" width = "390" height = "390"/>

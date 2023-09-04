@@ -24,7 +24,8 @@
 
     <param name="map/resolution" value="0.1"/>        
     <param name="map/frame_id"     value="$(arg map_frame_id)" />
-
+    <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
+    
     <!-- randomly change the map without trigger -->
     <param name="map/auto_change"    value="true"/>
 

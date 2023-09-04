@@ -34,7 +34,7 @@ pcl::PointCloud<pcl::PointXYZ> cloudMap;
 param_env::StructMapGenerator _struct_map_gen;
 param_env::GridMapParams _grid_mpa;
 param_env::MapGenParams _map_gen_pa;
-
+double _inflate_radius = 0.0;
 int _samples_on_map = 100;
 int _num = 0.0, _initial_num;
 bool _save_map = false, _auto_gen = false;
@@ -57,13 +57,27 @@ void pubSensedPoints() {
 }
 
 void resCallback(const std_msgs::Float32& msg) {
-  _grid_mpa.resolution_ = msg.data;
 
-  _struct_map_gen.initParams(_grid_mpa);
-  _struct_map_gen.resetMap();
-  _struct_map_gen.getPC(cloudMap);
+  float res = msg.data;
+  float inv_res = 1.0 / res;
 
-  pubSensedPoints();
+  if (inv_res - float((int)inv_res) < 1e-6) 
+  {
+    _grid_mpa.resolution_ = res;
+
+    _struct_map_gen.changeRes(_grid_mpa.resolution_);
+    _struct_map_gen.resetMap();
+    _struct_map_gen.getPC(cloudMap);
+    std::cout << "cloudMap.size() " << cloudMap.size()  << std::endl;
+    
+    pubSensedPoints();
+  }
+  else
+  {
+    ROS_WARN("The resolution is not valid! Try a different one !");
+  }
+
+
 }
 
 void genMapCallback(const std_msgs::Bool& msg) {
@@ -95,6 +109,7 @@ int main(int argc, char** argv) {
   nh.param("map/y_origin", _mpa.map_origin_(1), -20.0);
   nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
   nh.param("map/resolution", _grid_mpa.resolution_, 0.1);
+  nh.param("map/inflate_radius", _inflate_radius, 0.1);
 
   _grid_mpa.basic_mp_ = _mpa;
 

@@ -11,6 +11,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Int32.h>
 #include <visualization_msgs/MarkerArray.h>
 
 #include <Eigen/Eigen>
@@ -19,8 +20,8 @@
 #include <map_utils/geo_map.hpp>
 #include <map_utils/grid_map.hpp>
 #include <map_utils/map_basics.hpp>
-#include <map_utils/struct_map_gen.hpp>
 #include <map_utils/map_to_voxel.hpp>
+#include <map_utils/struct_map_gen.hpp>
 #include <random>
 
 using namespace std;
@@ -41,27 +42,24 @@ int _samples_on_map = 100;
 int _num = 0.0, _initial_num;
 bool _save_map = false, _auto_gen = false;
 std::string _dataset_path;
-double _seed;  // random seed
+int _seed;  // random seed
 double _inflate_radius = 0.0;
 
 ros::Publisher _voxel_no_inflation_map_pub, _voxel_map_pub;
 
-void publishVoxelMap()
-{
-
+void publishVoxelMap() {
   /**comment it for normal version without publish the voxel message**/
   kr_planning_msgs::VoxelMap voxel_map, voxel_no_inflation_map;
 
   param_env::gridMapToVoxelMap(_grid_map, _frame_id, voxel_no_inflation_map);
-  param_env::gridMapToInflaVoxelMap(_grid_map, _frame_id, _inflate_radius, voxel_map);
- 
+  param_env::gridMapToInflaVoxelMap(
+      _grid_map, _frame_id, _inflate_radius, voxel_map);
+
   _voxel_map_pub.publish(voxel_map);
   _voxel_no_inflation_map_pub.publish(voxel_no_inflation_map);
-
 }
 
 void pubSensedPoints() {
-
   _struct_map_gen.getGridMap(_grid_map);
 
   pcl::toROSMsg(cloudMap, globalMap_pcd);
@@ -79,31 +77,25 @@ void pubSensedPoints() {
 }
 
 void resCallback(const std_msgs::Float32& msg) {
-
   float res = msg.data;
   float inv_res = 1.0 / res;
 
-  if (inv_res - float((int)inv_res) < 1e-6) 
-  {
+  if (inv_res - float((int)inv_res) < 1e-6) {
     _grid_mpa.resolution_ = res;
 
     _struct_map_gen.changeRes(_grid_mpa.resolution_);
     _struct_map_gen.resetMap();
     _struct_map_gen.getPC(cloudMap);
-    std::cout << "cloudMap.size() " << cloudMap.size()  << std::endl;
-    
+    std::cout << "cloudMap.size() " << cloudMap.size() << std::endl;
+
     pubSensedPoints();
-  }
-  else
-  {
+  } else {
     ROS_WARN("The resolution is not valid! Try a different one !");
   }
-
-
 }
 
-void genMapCallback(const std_msgs::Bool& msg) {
-  _seed += 1.0;
+void genMapCallback(const std_msgs::Int32& msg) {
+  _seed = msg.data;
   _struct_map_gen.clear();
   _struct_map_gen.change_ratios(_seed);
   _struct_map_gen.getPC(cloudMap);
@@ -122,8 +114,10 @@ int main(int argc, char** argv) {
   _res_sub = nh.subscribe("change_res", 10, resCallback);
   _gen_map_sub = nh.subscribe("change_map", 10, genMapCallback);
 
-  _voxel_map_pub =  nh.advertise<kr_planning_msgs::VoxelMap>("/mapper/local_voxel_map", 1);
-  _voxel_no_inflation_map_pub =  nh.advertise<kr_planning_msgs::VoxelMap>("/mapper/local_voxel_no_inflation_map", 1);
+  _voxel_map_pub =
+      nh.advertise<kr_planning_msgs::VoxelMap>("/mapper/local_voxel_map", 1);
+  _voxel_no_inflation_map_pub = nh.advertise<kr_planning_msgs::VoxelMap>(
+      "/mapper/local_voxel_no_inflation_map", 1);
 
   param_env::BasicMapParams _mpa;
 
@@ -153,7 +147,7 @@ int main(int argc, char** argv) {
   nh.param("params/w3", _map_gen_pa.w3_, 2.0);
   nh.param("params/w4", _map_gen_pa.w4_, 3.0);
   nh.param("params/add_noise", _map_gen_pa.add_noise_, false);
-  nh.param("params/seed", _seed, 1.0);
+  nh.param("params/seed", _seed, 1);
 
   nh.param("dataset/save_map", _save_map, false);
   nh.param("dataset/samples_num", _samples_on_map, 0);

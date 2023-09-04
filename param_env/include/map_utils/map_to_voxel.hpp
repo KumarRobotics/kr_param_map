@@ -22,9 +22,6 @@ namespace param_env {
 
     GridMapParams _grid_mpa;
     grid_map.getMapParams(_grid_mpa);
-    std::cout << "+++ resolution : " << _grid_mpa.resolution_  << std::endl;
-
-
 
     map_resp.dim.x = std::ceil(_grid_mpa.basic_mp_.map_size_(0) / _grid_mpa.resolution_);
     map_resp.dim.y = std::ceil(_grid_mpa.basic_mp_.map_size_(1) / _grid_mpa.resolution_);
@@ -35,10 +32,6 @@ namespace param_env {
     map_resp.origin.z = _grid_mpa.basic_mp_.map_origin_(2);
     map_resp.data.clear();
     map_resp.data.resize(map_resp.dim.x * map_resp.dim.y * map_resp.dim.z);
-    std::cout << "+++ map_resp.dim.x  : " << map_resp.dim.x  << std::endl;
-    std::cout << "+++ map_resp.dim.y  : " << map_resp.dim.y  << std::endl;
-    std::cout << "+++ map_resp.dim.z  : " << map_resp.dim.z  << std::endl;
-    int tst = 0;
 
     for (int m = 0; m < map_resp.dim.z; m++) {
       for (int j = 0; j < map_resp.dim.y; j++) {
@@ -48,7 +41,6 @@ namespace param_env {
           if(grid_map.isOcc(idx))
           {
             map_resp.data[ map_resp.dim.y *  map_resp.dim.x * m +  map_resp.dim.x * j + i ] = 100;
-            tst += 1;
           }
           else
           {
@@ -59,7 +51,6 @@ namespace param_env {
       }
     }
 
-    std::cout << "+++ tyst  : " << tst  << std::endl;
   }
 
 

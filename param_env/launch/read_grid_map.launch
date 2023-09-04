@@ -42,7 +42,7 @@
 
     <!-- for multi-map reader, set folder path and use_folder as true -->
     <param name="folder_path" value="$(find param_env)/data/img/maze/"/>
-    <param name="use_folfer"  value="true"/>
+    <param name="use_folder"  value="true"/>
 
     <!-- mode 1 eg -->
     <param name="file_path" value="$(find param_env)/data/img/maze/maze8.png"/>

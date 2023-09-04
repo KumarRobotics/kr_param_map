@@ -143,7 +143,7 @@ namespace param_env
     }
 
     // fill occupancies with point clouds
-    void fillMap(pcl::PointCloud<pcl::PointXYZ> &cloudMap, double &inflated)
+    void fillMap(pcl::PointCloud<pcl::PointXYZ> &cloudMap, double inflated)
     {
       Eigen::Vector3d ob_pt, infla_pt;
 

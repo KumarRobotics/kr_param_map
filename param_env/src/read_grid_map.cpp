@@ -25,6 +25,7 @@
 #include <map_utils/geo_map.hpp>
 #include <map_utils/grid_map.hpp>
 #include <map_utils/map_basics.hpp>
+#include <map_utils/map_to_voxel.hpp>
 #include <random>
 // We use SDL_image to load the image from disk
 #include <SDL/SDL_image.h>
@@ -50,6 +51,20 @@ bool _auto_gen = false, _use_folder = false, _publish_grid_centers = false;
 //*** image params ***/
 int _negate;
 double _occ_th;
+
+ros::Publisher _voxel_no_inflation_map_pub, _voxel_map_pub;
+
+void publishVoxelMap() {
+  /**comment it for normal version without publish the voxel message**/
+  kr_planning_msgs::VoxelMap voxel_map, voxel_no_inflation_map;
+
+  param_env::gridMapToVoxelMap(_grid_map, _frame_id, voxel_no_inflation_map);
+  param_env::gridMapToInflaVoxelMap(
+      _grid_map, _frame_id, _inflate_radius, voxel_map);
+
+  _voxel_map_pub.publish(voxel_map);
+  _voxel_no_inflation_map_pub.publish(voxel_no_inflation_map);
+}
 
 void toPcsMsg() {
   cloudMap.width = cloudMap.points.size();
@@ -202,7 +217,7 @@ void pubSensedPoints() {
   _all_cloud_pub.publish(globalCloud_pcd);
 
   if (_publish_grid_centers) {
-    _grid_map.fillMap(cloudMap, _inflate_radius);
+    _grid_map.fillMap(cloudMap, -1.0);
     _grid_map.publishMap(gridCloudMap);
 
     pcl::toROSMsg(gridCloudMap, globalMap_pcd);
@@ -254,10 +269,24 @@ bool nextFile() {
 }
 
 void resCallback(const std_msgs::Float32& msg) {
-  _grid_mpa.resolution_ = msg.data;
+
+
+  float res = msg.data;
+  float inv_res = 1.0 / res;
+
+  if (inv_res - float((int)inv_res) < 1e-6) 
+  {
+
+  _grid_mpa.resolution_ = res;
   _grid_map.initMap(_grid_mpa);
 
   pubSensedPoints();
+  }
+  else
+  {
+    ROS_WARN("The resolution is not valid! Try a different one !");
+  }
+
 }
 
 void genMapCallback(const std_msgs::Bool& msg) { nextFile(); }
@@ -271,6 +300,11 @@ int main(int argc, char** argv) {
 
   _res_sub = nh.subscribe("change_res", 10, resCallback);
   _gen_map_sub = nh.subscribe("change_map", 10, genMapCallback);
+
+  _voxel_map_pub =
+      nh.advertise<kr_planning_msgs::VoxelMap>("/mapper/local_voxel_map", 1);
+  _voxel_no_inflation_map_pub = nh.advertise<kr_planning_msgs::VoxelMap>(
+      "/mapper/local_voxel_no_inflation_map", 1);
 
   nh.param("map/x_size", _mpa.map_size_(0), 40.0);
   nh.param("map/y_size", _mpa.map_size_(1), 40.0);
@@ -333,6 +367,7 @@ int main(int argc, char** argv) {
     }
 
     ros::spinOnce();
+    publishVoxelMap();
     loop_rate.sleep();
   }
 }

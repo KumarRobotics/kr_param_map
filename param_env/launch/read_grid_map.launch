@@ -1,8 +1,8 @@
 <launch>
 
   <arg name="map_frame_id" default="map"/>
-  <arg name="map_size_x" default="10"/>
-  <arg name="map_size_y" default="20"/>
+  <arg name="map_size_x" default="20"/>
+  <arg name="map_size_y" default="10"/>
   <arg name="map_size_z" default="3"/>
   <arg name="map_x_origin" default="-5.0"/>
   <arg name="map_y_origin" default="-10.0"/>
@@ -27,7 +27,7 @@
     <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
 
     <!-- randomly change the map without trigger -->
-    <param name="map/auto_change"    value="true"/>
+    <param name="map/auto_change"    value="false"/>
 
     <!-- another topic to publish point with inflation-->
     <param name="map/publish_grid_centers"  value="true"/>
@@ -40,6 +40,7 @@
            4 read pcd file -->
     <param name="map/mode"       value="1" />
 
+    <!-- for multi-map reader, set folder path and use_folder as true -->
     <param name="folder_path" value="$(find param_env)/data/img/maze/"/>
     <param name="use_folfer"  value="true"/>
 

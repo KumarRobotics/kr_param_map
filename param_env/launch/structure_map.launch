@@ -45,7 +45,7 @@
     <param name="params/seed" value="0.5"/>
 
     <!-- to generate map dataset in this folder -->
-    <param name="dataset/save_map"    value="true"/>
+    <param name="dataset/save_map"    value="false"/>
     <param name="dataset/samples_num" value="100"/>
     <param name="dataset/start_index" value="5080900"/>
     <param name="dataset/path"        value="$(find param_env)/dataset/"/>

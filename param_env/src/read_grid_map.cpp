@@ -13,8 +13,8 @@
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud_conversion.h>
-#include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Int32.h>
 #include <visualization_msgs/MarkerArray.h>
 
 #include <Eigen/Eigen>
@@ -269,27 +269,21 @@ bool nextFile() {
 }
 
 void resCallback(const std_msgs::Float32& msg) {
-
-
   float res = msg.data;
   float inv_res = 1.0 / res;
 
-  if (inv_res - float((int)inv_res) < 1e-6) 
-  {
+  if (inv_res - float((int)inv_res) < 1e-6) {
+    _grid_mpa.resolution_ = res;
+    _grid_map.initMap(_grid_mpa);
 
-  _grid_mpa.resolution_ = res;
-  _grid_map.initMap(_grid_mpa);
-
-  pubSensedPoints();
-  }
-  else
-  {
+    pubSensedPoints();
+  } else {
     ROS_WARN("The resolution is not valid! Try a different one !");
   }
-
 }
 
-void genMapCallback(const std_msgs::Bool& msg) { nextFile(); }
+// ToDo: Change to a specific map specified by the message
+void genMapCallback(const std_msgs::Int32& msg) { nextFile(); }
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "param_map");

@@ -40,10 +40,10 @@ param_env::GridMap _grid_map;
 
 int _samples_on_map = 100;
 int _num = 0.0, _initial_num;
-bool _save_map = false, _auto_gen = false;
+bool _save_map = false, _auto_gen = false, _evaluate = false;
 std::string _dataset_path;
 int _seed;  // random seed
-double _inflate_radius = 0.0;
+double _inflate_radius = 0.0, _mav_radius = 0.1;
 
 ros::Publisher _voxel_no_inflation_map_pub, _voxel_map_pub;
 
@@ -71,6 +71,11 @@ void pubSensedPoints() {
                                   std::to_string(_initial_num + _num) +
                                   std::string(".pcd"),
                               cloudMap);
+  }
+
+  if (_evaluate)
+  {
+    _grid_map.evaluateEnv(_mav_radius);
   }
 
   return;
@@ -134,6 +139,9 @@ int main(int argc, char** argv) {
 
   nh.param("map/frame_id", _frame_id, string("map"));
   nh.param("map/auto_change", _auto_gen, false);
+
+  nh.param("map/evaluate", _evaluate, false);
+  nh.param("map/mav_radius", _mav_radius, 0.1);
 
   // parameters for the environment
   nh.param("params/cylinder_ratio", _map_gen_pa.cylinder_ratio_, 0.1);

@@ -328,7 +328,9 @@ class StructMapGenerator {
               << 100 * float(poly_grids) / float(all_grids) << "%           +++"
               << std::endl;
     std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+
   }
+
 };
 
 }  // namespace param_env

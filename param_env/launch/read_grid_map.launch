@@ -26,6 +26,12 @@
     <param name="map/frame_id"      value="$(arg map_frame_id)" />
     <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
 
+
+    <!-- for evaluation -->
+    <param name="map/mav_radius" value="0.2"/> 
+    <param name="map/evaluate"   value="true"/> 
+
+
     <!-- randomly change the map without trigger -->
     <param name="map/auto_change"    value="false"/>
 

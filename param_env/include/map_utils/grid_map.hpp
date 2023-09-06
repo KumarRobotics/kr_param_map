@@ -6,7 +6,10 @@
 #include <map>
 #include <string>
 #include <map_utils/map_basics.hpp>
-
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/search/kdtree.h>
 
 namespace param_env
 {
@@ -84,6 +87,95 @@ namespace param_env
       std::cout << "+++ size       : " << mp_.basic_mp_.map_size_(0) << " " << mp_.basic_mp_.map_size_(1) << " " << mp_.basic_mp_.map_size_(2) << std::endl;
       std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
 
+    }
+
+    Eigen::Vector3d evaluateEnv(double mav_radius)
+    {
+      int occ_num = 0, con_num = 0;
+      float max_dis = 0.0; //SquaredDistance
+      
+      std::vector<Eigen::Vector3i> neighbors;
+      neighbors.push_back(Eigen::Vector3i(0, 0,  1));
+      neighbors.push_back(Eigen::Vector3i(0, 0, -1));
+      neighbors.push_back(Eigen::Vector3i(0,  1, 0));
+      neighbors.push_back(Eigen::Vector3i(0, -1, 0));
+      neighbors.push_back(Eigen::Vector3i( 1, 0, 0));
+      neighbors.push_back(Eigen::Vector3i(-1, 0, 0));
+
+      // kd tree setup
+      pcl::PointCloud<pcl::PointXYZ> cloud_all_map;
+      getObsPts(cloud_all_map);
+      pcl::search::KdTree<pcl::PointXYZ> kdtreeMap;
+      kdtreeMap.setInputCloud(cloud_all_map.makeShared());
+      std::vector<int> pointIdxRadiusSearch;
+      std::vector<float> pointRadiusSquaredDistance;
+
+      for (int x = 0; x < mp_.map_grid_size_(0); ++x)
+        for (int y = 0; y < mp_.map_grid_size_(1); ++y)
+          for (int z = 0; z < mp_.map_grid_size_(2); ++z)
+          {
+            if (occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] > mp_.min_thrd_) 
+            {
+              //std::cout << occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] << std::endl;
+              occ_num += 1;
+
+
+              // check surroundings
+              for (auto &nbr : neighbors)
+              {
+
+                Eigen::Vector3i pt = Eigen::Vector3i(x, y, z) + nbr;
+                if (!isOcc(pt))
+                {
+                  con_num += 1;
+                  break;
+                }
+              }
+
+            }else
+            {
+              //free grid, let's compute the dispersion
+              pointIdxRadiusSearch.clear();
+              pointRadiusSquaredDistance.clear();
+
+
+              Eigen::Vector3d pos;
+              indexToPos(Eigen::Vector3i(x, y, z), pos);
+
+              pcl::PointXYZ searchPoint(pos(0), pos(1), pos(2));
+
+
+              if (kdtreeMap.nearestKSearch(searchPoint, 1,
+                                            pointIdxRadiusSearch,
+                                            pointRadiusSquaredDistance) > 0)
+              {
+                if (pointRadiusSquaredDistance[0] > max_dis)
+                {
+                  max_dis = pointRadiusSquaredDistance[0];
+                }
+
+              }
+            }
+              
+          }
+
+      std::cout << "+++  max_dis : " << max_dis << std::endl;
+      std::cout << "+++  occ_num : " << occ_num << std::endl;
+      std::cout << "+++  con_num  : " <<  con_num  << std::endl;
+      double density_index   = ((double) occ_num) / ((double)(mp_.map_grid_size_(0) * mp_.map_grid_size_(1) * mp_.map_grid_size_(2)));
+      double structure_index = ((double) con_num) / (std::max(0.1, (double)(occ_num)));
+
+      double clutter_index   = mav_radius / std::sqrt(max_dis);
+
+
+      std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+      std::cout << "+++++++Enviornment Complexity Index (ECI) +++++++++++" << std::endl;
+      std::cout << "+++ density index : " << density_index  << std::endl;
+      std::cout << "+++ structure index : " << structure_index  << std::endl;
+      std::cout << "+++ clutter_index     : " << clutter_index  << std::endl;
+      std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+
+      return Eigen::Vector3d(density_index, clutter_index, structure_index);
     }
 
     // get the map parameters

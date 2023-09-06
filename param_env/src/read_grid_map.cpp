@@ -44,9 +44,9 @@ pcl::PointCloud<pcl::PointXYZ> cloudMap, gridCloudMap;
 param_env::GridMapParams _grid_mpa;
 param_env::GridMap _grid_map;
 param_env::BasicMapParams _mpa;
-double _inflate_radius = 0.0;
+double _inflate_radius = 0.0, _mav_radius = 0.1;
 std::filesystem::directory_iterator file_iter;
-bool _auto_gen = false, _use_folder = false, _publish_grid_centers = false;
+bool _auto_gen = false, _use_folder = false, _publish_grid_centers = false, _evaluate = false;
 
 //*** image params ***/
 int _negate;
@@ -224,6 +224,11 @@ void pubSensedPoints() {
     globalMap_pcd.header.frame_id = _frame_id;
     _all_map_pub.publish(globalMap_pcd);
   }
+
+  if (_evaluate)
+  {
+    _grid_map.evaluateEnv(_mav_radius);
+  }
 }
 
 void readMap(std::string file_path) {
@@ -313,6 +318,9 @@ int main(int argc, char** argv) {
 
   nh.param("map/auto_change", _auto_gen, false);
   nh.param("map/publish_grid_centers", _publish_grid_centers, false);
+
+  nh.param("map/evaluate", _evaluate, false);
+  nh.param("map/mav_radius", _mav_radius, 0.1);
 
   // set up basic parameters for grid map
   _grid_mpa.basic_mp_ = _mpa;

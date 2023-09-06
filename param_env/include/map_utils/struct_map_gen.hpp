@@ -308,7 +308,7 @@ class StructMapGenerator {
       geo_map_.add(poly);
     }
 
-    std::cout << setiosflags(ios::fixed) << setprecision(2) << std::endl;
+    // std::cout << setiosflags(ios::fixed) << setprecision(2) << std::endl;
     std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << "+++ Finished generate random map ! +++" << std::endl;
     std::cout << "+++ The ratios for geometries are: +++" << std::endl;

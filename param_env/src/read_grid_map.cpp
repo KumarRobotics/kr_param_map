@@ -6,6 +6,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/common/common.h>
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <rosbag/bag.h>
@@ -51,6 +53,11 @@ bool _auto_gen = false, _use_folder = false, _publish_grid_centers = false, _eva
 //*** image params ***/
 int _negate;
 double _occ_th;
+
+
+//*** ECI params ***/
+double _density_index,  _clutter_index,  _structure_index, _seed;
+
 
 ros::Publisher _voxel_no_inflation_map_pub, _voxel_map_pub;
 
@@ -186,31 +193,68 @@ void read_pcs_pcd(std::string& path) {
     PCL_ERROR("Couldn't read pcd file \n");
   }
 
+  pcl::PointXYZ minPt, maxPt, delta_change;
+  pcl::getMinMax3D (cloudMap, minPt, maxPt);
+  std::cout << "Max x: " << maxPt.x << " Max y: " << maxPt.y << " Max z: " << maxPt.z << std::endl;
+  std::cout << "Min x: " << minPt.x << " Min y: " << minPt.y << " Min z: " << minPt.z << std::endl;
+  
+
+  delta_change.x = _mpa.map_origin_(0) - minPt.x;
+  delta_change.y = _mpa.map_origin_(1) - minPt.y;
+  delta_change.z = _mpa.map_origin_(2) - minPt.z;
+
+  
+  for (auto &pt : cloudMap)
+  {
+    pt.x += delta_change.x;
+    pt.y += delta_change.y;
+    pt.z += delta_change.z;
+  }
+
+
+  std::cout << "cloudMap.size()" << cloudMap.size() << std::endl;
+
   toPcsMsg();
 }
 
 /*** randomly gen points  ***/
-void gen_pcs(float bound = 50, int num = 10000) {
-  std::default_random_engine random(time(NULL));
-  std::uniform_real_distribution<double> r(-bound, bound);
+void gen_pcs(int num = 1000) {
+
+  std::default_random_engine eng(_seed);
+
+  std::uniform_real_distribution<double> x_range(_mpa.map_origin_(0), _mpa.map_size_(0) + _mpa.map_origin_(0));
+  std::uniform_real_distribution<double> y_range(_mpa.map_origin_(1), _mpa.map_size_(1) + _mpa.map_origin_(1));
+  std::uniform_real_distribution<double> z_range(_mpa.map_origin_(2), _mpa.map_size_(2) + _mpa.map_origin_(2));
+
   int loop_n = 0;
 
   while (loop_n < num) {
-    float ax = r(random);
-    float ay = r(random);
-    float az = r(random);
-    float fx1 = bound / 4.0;
-    float fy1 = bound / 4.0;
-    float fy2 = bound / 4.0;
-    float fz2 = bound / 4.0;
-    if (ax < fx1 && ax > -fx1 && ay < fy1 && ay > -fy1) continue;
-    if (ay < fy2 && ay > -fy2 && az < fz2 && az > -fz2) continue;
+    float ax = x_range(eng);
+    float ay = y_range(eng);
+    float az = z_range(eng);
     cloudMap.points.push_back(pcl::PointXYZ(ax, ay, az));
     loop_n++;
   }
 
   toPcsMsg();
 }
+
+
+void gen_ECI_pcs() {
+
+  std::default_random_engine eng(_seed);
+
+  std::uniform_real_distribution<double> x_range(_mpa.map_origin_(0), _mpa.map_size_(0) + _mpa.map_origin_(0));
+  std::uniform_real_distribution<double> y_range(_mpa.map_origin_(1), _mpa.map_size_(1) + _mpa.map_origin_(1));
+  std::uniform_real_distribution<double> z_range(_mpa.map_origin_(2), _mpa.map_size_(2) + _mpa.map_origin_(2));
+  
+  _grid_map.setUniRand(eng);
+  _grid_map.ECIgenerate(_density_index,  _clutter_index,  _structure_index);
+  _grid_map.getObsPts(cloudMap);
+
+  toPcsMsg();
+}
+
 
 void pubSensedPoints() {
   globalCloud_pcd.header.frame_id = _frame_id;
@@ -219,6 +263,7 @@ void pubSensedPoints() {
   if (_publish_grid_centers) {
     _grid_map.fillMap(cloudMap, -1.0);
     _grid_map.publishMap(gridCloudMap);
+    std::cout << "gridCloudMap.size()" << gridCloudMap.size() << std::endl;
 
     pcl::toROSMsg(gridCloudMap, globalMap_pcd);
     globalMap_pcd.header.frame_id = _frame_id;
@@ -234,7 +279,9 @@ void pubSensedPoints() {
 void readMap(std::string file_path) {
   switch (_mode) {
     case 0:
-      gen_pcs();
+      //gen_pcs();
+      gen_ECI_pcs();
+      _seed += 1;
       break;
     case 1: {
       read_img(file_path);
@@ -322,6 +369,13 @@ int main(int argc, char** argv) {
   nh.param("map/evaluate", _evaluate, false);
   nh.param("map/mav_radius", _mav_radius, 0.1);
 
+
+  nh.param("params/density_index", _density_index, 0.1);
+  nh.param("params/clutter_index", _clutter_index, 0.1);
+  nh.param("params/structure_index", _structure_index, 0.1);
+  nh.param("params/seed", _seed, 0.1);
+
+
   // set up basic parameters for grid map
   _grid_mpa.basic_mp_ = _mpa;
   _grid_mpa.basic_mp_.min_range_ = _grid_mpa.basic_mp_.map_origin_;
@@ -366,6 +420,11 @@ int main(int argc, char** argv) {
   while (ros::ok()) {
     if (_auto_gen && _use_folder && success) {
       success = nextFile();
+    }else if (_auto_gen &&  _mode == 0)
+    {
+      cloudMap.clear();
+      _grid_map.clearAllOcc();
+      readMap(file_path);
     }
 
     ros::spinOnce();

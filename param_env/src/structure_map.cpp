@@ -151,9 +151,6 @@ int main(int argc, char** argv) {
   nh.param("params/poly_ratio", _map_gen_pa.poly_ratio_, 0.1);
   // random number ranges
   nh.param("params/w1", _map_gen_pa.w1_, 0.3);
-  nh.param("params/w2", _map_gen_pa.w2_, 1.0);
-  nh.param("params/w3", _map_gen_pa.w3_, 2.0);
-  nh.param("params/w4", _map_gen_pa.w4_, 3.0);
   nh.param("params/add_noise", _map_gen_pa.add_noise_, false);
   nh.param("params/seed", _seed, 1);
 

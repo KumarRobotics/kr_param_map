@@ -29,7 +29,7 @@ namespace param_env {
 struct MapGenParams {
   /* parameters for map generator */
   double cylinder_ratio_, circle_ratio_, gate_ratio_, ellip_ratio_, poly_ratio_;
-  double w1_, w2_, w3_, w4_;
+  double w1_;
   bool add_noise_ = false;
 };
 
@@ -44,8 +44,7 @@ class StructMapGenerator {
   param_env::MapGenParams mgpa_;
 
   default_random_engine eng;
-  uniform_real_distribution<double> rand_theta, rand_w, rand_h, rand_cw,
-      rand_radiu;
+  uniform_real_distribution<double> rand_theta, rand_ratio_base, rand_ratio_base2, rand_h, rand_cw;
 
  public:
   StructMapGenerator() = default;
@@ -147,6 +146,8 @@ class StructMapGenerator {
 
     rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
     rand_h = uniform_real_distribution<double>(0.1, mpa.basic_mp_.map_size_(2));
+    rand_ratio_base = uniform_real_distribution<double>(0.0, 1.0);
+    rand_ratio_base2 = uniform_real_distribution<double>(0.0, 0.5);
   }
 
   void changeRes(double& res) {
@@ -192,13 +193,42 @@ class StructMapGenerator {
   }
 
   void change_ratios(int& seed) {
-    eng.seed(seed);
 
-    mgpa_.cylinder_ratio_ = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-    mgpa_.circle_ratio_ = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
-    mgpa_.gate_ratio_ = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
-    mgpa_.ellip_ratio_ = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
-    mgpa_.poly_ratio_ = mgpa_.w1_ * rand_w(eng) * rand_w(eng);
+    eng.seed(seed);
+    mgpa_.w1_ = rand_ratio_base(eng);
+    std::cout << "+++ w1  : "
+              << mgpa_.w1_
+              << "      +++" << std::endl;
+    double total_ratio = rand_ratio_base2(eng);
+    Eigen::VectorXd ratio_vec(5);
+    ratio_vec.setZero();
+
+    int i = 0;
+    while (total_ratio > 0 &&  i < 5)
+    {
+      double ratio = rand_ratio_base2(eng) * rand_ratio_base2(eng);
+      if ( total_ratio - ratio > 0)
+      {
+        ratio_vec(i) = ratio;
+        total_ratio -= ratio;
+        i += 1;
+      }else
+      {
+        ratio_vec(i) = total_ratio;
+        break;
+      }
+    }
+    mgpa_.cylinder_ratio_ = ratio_vec(0);
+    mgpa_.circle_ratio_   = ratio_vec(1);
+    mgpa_.gate_ratio_     = ratio_vec(2);
+    mgpa_.ellip_ratio_    = ratio_vec(3);
+    mgpa_.poly_ratio_     = ratio_vec(4);
+
+
+    std::cout << "finish ! +++ ratio_vec : "
+              << ratio_vec
+              << "      +++" << ratio_vec.sum() << std::endl;
+
 
     generate();
   }
@@ -206,16 +236,16 @@ class StructMapGenerator {
   void randomUniMapGen(param_env::MapGenParams& mgpa, int& seed) {
     mgpa_ = mgpa;
 
-    rand_w = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w2_);
-    rand_cw = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w3_);
-    rand_radiu = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w4_);
-
     eng.seed(seed);
     generate();
   }
 
   void generate() {
     grid_map_.setUniRand(eng);
+
+
+    rand_cw = uniform_real_distribution<double>(0, mgpa_.w1_ * mpa_.basic_mp_.map_size_(2));
+
 
     int all_grids =
         ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));
@@ -251,9 +281,9 @@ class StructMapGenerator {
       grid_map_.getUniRandPos(cpt);
 
       double theta = rand_theta(eng);
-      double width = 0.1 + 0.2 * rand_radiu(eng);
+      double width = 0.1 + 0.2 * rand_cw(eng);
 
-      bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
+      bound << width, width + rand_cw(eng), width + rand_cw(eng);
 
       param_env::CircleGate cir_gate(cpt, bound, theta);
 
@@ -268,9 +298,9 @@ class StructMapGenerator {
       grid_map_.getUniRandPos(cpt);
 
       double theta = rand_theta(eng);
-      double width = 0.1 + 0.2 * rand_radiu(eng);
+      double width = 0.1 + 0.2 * rand_cw(eng);
 
-      bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
+      bound << width, width + rand_cw(eng), width + rand_cw(eng);
 
       param_env::RectGate rect_gate(cpt, bound, theta);
 
@@ -286,7 +316,7 @@ class StructMapGenerator {
       grid_map_.getUniRandPos(cpt);
       Eigen::Vector3d euler_angle;
       euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
-      bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
+      bound << rand_cw(eng), rand_cw(eng), rand_cw(eng);
 
       param_env::Ellipsoid ellip;
       ellip.init(cpt, bound, euler_angle);
@@ -299,7 +329,7 @@ class StructMapGenerator {
     cur_grids = 0;
     while (cur_grids < poly_grids) {
       grid_map_.getUniRandPos(cpt);
-      bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
+      bound << rand_cw(eng), rand_cw(eng), rand_cw(eng);
 
       param_env::Polyhedron poly;
       poly.randomInit(cpt, bound);

@@ -231,7 +231,7 @@ namespace param_env
 
 
         int i = 0;
-        while (i < 6 * sp_num)
+        while (i < sp_num)
         {
           Eigen::Vector3d d_step(rand_scale_1(eng_) * rand_x(eng_), rand_scale_2(eng_) * rand_y(eng_), rand_scale_3(eng_) * rand_z(eng_));
           //std::cout <<  "d_step is " << d_step << std::endl;

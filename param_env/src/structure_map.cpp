@@ -2,6 +2,7 @@
 #include <geometry_msgs/Vector3.h>
 #include <math.h>
 #include <nav_msgs/Odometry.h>
+#include <param_env_msgs/changeMap.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -28,7 +29,8 @@ using namespace std;
 
 std::string _frame_id;
 ros::Publisher _all_map_cloud_pub;
-ros::Subscriber _res_sub, _gen_map_sub;
+ros::Subscriber _res_sub;
+ros::ServiceServer _change_map_service;
 
 sensor_msgs::PointCloud2 globalMap_pcd;
 pcl::PointCloud<pcl::PointXYZ> cloudMap;
@@ -44,6 +46,7 @@ bool _save_map = false, _auto_gen = false, _evaluate = false;
 std::string _dataset_path;
 int _seed;  // random seed
 double _inflate_radius = 0.0, _mav_radius = 0.1;
+Eigen::Vector3d _map_property;
 
 ros::Publisher _voxel_no_inflation_map_pub, _voxel_map_pub;
 
@@ -73,11 +76,9 @@ void pubSensedPoints() {
                               cloudMap);
   }
 
-  if (_evaluate)
-  {
-    _grid_map.evaluateEnv(_mav_radius);
+  if (_evaluate) {
+    _map_property = _grid_map.evaluateEnv(_mav_radius);
   }
-
   return;
 }
 
@@ -99,14 +100,22 @@ void resCallback(const std_msgs::Float32& msg) {
   }
 }
 
-void genMapCallback(const std_msgs::Int32& msg) {
-  _seed = msg.data;
+bool genMapCallback(param_env_msgs::changeMap::Request& req,
+                    param_env_msgs::changeMap::Response& res) {
+  _map_property << 0.0, 0.0, 0.0;
+  _seed = req.seed;
   _struct_map_gen.clear();
   _struct_map_gen.change_ratios(_seed);
   _struct_map_gen.getPC(cloudMap);
   _num += 1;
 
   pubSensedPoints();
+
+  res.density_index = _map_property(0);
+  res.clutter_index = _map_property(1);
+  res.structure_index = _map_property(2);
+
+  return true;
 }
 
 int main(int argc, char** argv) {
@@ -117,7 +126,9 @@ int main(int argc, char** argv) {
       nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
 
   _res_sub = nh.subscribe("change_res", 10, resCallback);
-  _gen_map_sub = nh.subscribe("change_map", 10, genMapCallback);
+  _change_map_service = nh.advertiseService("change_map", genMapCallback);
+
+  // _gen_map_sub = nh.subscribe("change_map", 10, genMapCallback);
 
   _voxel_map_pub =
       nh.advertise<kr_planning_msgs::VoxelMap>("/mapper/local_voxel_map", 1);

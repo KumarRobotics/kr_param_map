@@ -1,0 +1,7 @@
+# Request: send a seed to randomize the map
+int64 seed
+---
+# Response: receive map properties
+float64 density_index
+float64 clutter_index
+float64 structure_index

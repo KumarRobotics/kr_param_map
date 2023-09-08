@@ -44,7 +44,8 @@ class StructMapGenerator {
   param_env::MapGenParams mgpa_;
 
   default_random_engine eng;
-  uniform_real_distribution<double> rand_theta, rand_ratio_base, rand_ratio_base2, rand_h, rand_cw;
+  uniform_real_distribution<double> rand_theta, rand_ratio_base,
+      rand_ratio_base2, rand_h, rand_cw;
 
  public:
   StructMapGenerator() = default;
@@ -147,7 +148,7 @@ class StructMapGenerator {
     rand_theta = uniform_real_distribution<double>(-M_PI, M_PI);
     rand_h = uniform_real_distribution<double>(0.1, mpa.basic_mp_.map_size_(2));
     rand_ratio_base = uniform_real_distribution<double>(0.0, 1.0);
-    rand_ratio_base2 = uniform_real_distribution<double>(0.0, 0.5);
+    rand_ratio_base2 = uniform_real_distribution<double>(0.0, 0.25);
   }
 
   void changeRes(double& res) {
@@ -193,42 +194,33 @@ class StructMapGenerator {
   }
 
   void change_ratios(int& seed) {
-
     eng.seed(seed);
     mgpa_.w1_ = rand_ratio_base(eng);
-    std::cout << "+++ w1  : "
-              << mgpa_.w1_
-              << "      +++" << std::endl;
+    std::cout << "+++ w1  : " << mgpa_.w1_ << "      +++" << std::endl;
     double total_ratio = rand_ratio_base2(eng);
     Eigen::VectorXd ratio_vec(5);
     ratio_vec.setZero();
 
     int i = 0;
-    while (total_ratio > 0 &&  i < 5)
-    {
+    while (total_ratio > 0 && i < 5) {
       double ratio = rand_ratio_base2(eng) * rand_ratio_base2(eng);
-      if ( total_ratio - ratio > 0)
-      {
+      if (total_ratio - ratio > 0) {
         ratio_vec(i) = ratio;
         total_ratio -= ratio;
         i += 1;
-      }else
-      {
+      } else {
         ratio_vec(i) = total_ratio;
         break;
       }
     }
     mgpa_.cylinder_ratio_ = ratio_vec(0);
-    mgpa_.circle_ratio_   = ratio_vec(1);
-    mgpa_.gate_ratio_     = ratio_vec(2);
-    mgpa_.ellip_ratio_    = ratio_vec(3);
-    mgpa_.poly_ratio_     = ratio_vec(4);
+    mgpa_.circle_ratio_ = ratio_vec(1);
+    mgpa_.gate_ratio_ = ratio_vec(2);
+    mgpa_.ellip_ratio_ = ratio_vec(3);
+    mgpa_.poly_ratio_ = ratio_vec(4);
 
-
-    std::cout << "finish ! +++ ratio_vec : "
-              << ratio_vec
-              << "      +++" << ratio_vec.sum() << std::endl;
-
+    std::cout << "finish ! +++ ratio_vec : " << ratio_vec << "      +++"
+              << ratio_vec.sum() << std::endl;
 
     generate();
   }
@@ -243,9 +235,8 @@ class StructMapGenerator {
   void generate() {
     grid_map_.setUniRand(eng);
 
-
-    rand_cw = uniform_real_distribution<double>(0, mgpa_.w1_ * mpa_.basic_mp_.map_size_(2));
-
+    rand_cw = uniform_real_distribution<double>(
+        0, mgpa_.w1_ * mpa_.basic_mp_.map_size_(2));
 
     int all_grids =
         ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));
@@ -358,9 +349,7 @@ class StructMapGenerator {
               << 100 * float(poly_grids) / float(all_grids) << "%           +++"
               << std::endl;
     std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
-
   }
-
 };
 
 }  // namespace param_env

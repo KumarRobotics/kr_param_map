@@ -5,3 +5,4 @@ int64 seed
 float64 density_index
 float64 clutter_index
 float64 structure_index
+std_msgs/String file_name

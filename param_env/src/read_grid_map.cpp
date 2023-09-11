@@ -53,6 +53,9 @@ param_env::BasicMapParams _mpa;
 double _inflate_radius = 0.0, _mav_radius = 0.1;
 std::string _file_name;
 std::filesystem::directory_iterator file_iter;
+std::vector<std::filesystem::path> filenames;
+int file_idx = 0;
+
 bool _auto_gen = false, _use_folder = false, _publish_grid_centers = false,
      _evaluate = false;
 
@@ -266,7 +269,7 @@ void pubSensedPoints() {
   _all_cloud_pub.publish(globalCloud_pcd);
 
   if (_publish_grid_centers) {
-    _grid_map.fillMap(cloudMap, _mav_radius);
+    _grid_map.fillMap(cloudMap, -1.0);
     _grid_map.publishMap(gridCloudMap);
     std::cout << "gridCloudMap.size()" << gridCloudMap.size() << std::endl;
 
@@ -313,15 +316,16 @@ void readMap(std::string file_path) {
 }
 
 bool nextFile() {
-  file_iter++;
-  if (file_iter == std::filesystem::directory_iterator()) {
-    ROS_INFO("No more files in directory");
-    return false;
+  file_idx++;
+  if (file_idx >= filenames.size()) {
+    file_idx = 0;
+    ROS_WARN("No more files to read! Starting from 0 again.");
   }
+
   cloudMap.clear();
   _grid_map.clearAllOcc();
-  _file_name = file_iter->path().filename().string();
-  readMap(file_iter->path());
+  _file_name = filenames[file_idx].string();
+  readMap(_file_name);
 
   return true;
 }
@@ -421,6 +425,12 @@ int main(int argc, char** argv) {
   if (_use_folder) {
     file_iter = std::filesystem::directory_iterator(folder_path);
     readMap(file_iter->path());
+    // new stuff so we read the names in order
+    for (const auto& entry : std::filesystem::directory_iterator(folder_path)) {
+      filenames.push_back(entry.path());
+    }
+    std::sort(filenames.begin(), filenames.end());
+
   } else {
     nh.param("file_path", file_path, std::string("path"));
     readMap(file_path);

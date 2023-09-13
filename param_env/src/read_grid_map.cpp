@@ -73,12 +73,13 @@ void publishVoxelMap() {
   /**comment it for normal version without publish the voxel message**/
   kr_planning_msgs::VoxelMap voxel_map, voxel_no_inflation_map;
 
-  param_env::gridMapToVoxelMap(_grid_map, _frame_id, voxel_no_inflation_map);
-  param_env::gridMapToInflaVoxelMap(
-      _grid_map, _frame_id, _inflate_radius, voxel_map);
+  //param_env::gridMapToVoxelMap(_grid_map, _frame_id, voxel_no_inflation_map);
+  param_env::gridMapToInflaAndNoInflaVoxelMap(
+      _grid_map, _frame_id, _inflate_radius, voxel_map, voxel_no_inflation_map);
 
   _voxel_map_pub.publish(voxel_map);
   _voxel_no_inflation_map_pub.publish(voxel_no_inflation_map);
+  //std::cout << "publish the voxel map" << std::endl;
 }
 
 void toPcsMsg() {
@@ -269,7 +270,7 @@ void pubSensedPoints() {
   _all_cloud_pub.publish(globalCloud_pcd);
 
   if (_publish_grid_centers) {
-    _grid_map.fillMap(cloudMap, _mav_radius);
+    _grid_map.fillMap(cloudMap, 0.1);
     _grid_map.publishMap(gridCloudMap);
     std::cout << "gridCloudMap.size()" << gridCloudMap.size() << std::endl;
 
@@ -436,7 +437,7 @@ int main(int argc, char** argv) {
     readMap(file_path);
   }
 
-  ros::Rate loop_rate(10.0);
+  ros::Rate loop_rate(5.0);
   bool success = true;
 
   while (ros::ok()) {

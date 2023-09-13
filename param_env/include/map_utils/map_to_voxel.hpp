@@ -162,7 +162,7 @@ namespace param_env {
           Eigen::Vector3i idx(i, j, m);
           if(grid_map.isOcc(idx))
           { 
-            map_resp_no_infla.data[ map_resp.dim.y *  map_resp.dim.x * m  +  +  map_resp.dim.x * j + i] = 100;
+            map_resp_no_infla.data[map_resp.dim.y *  map_resp.dim.x * m  +  +  map_resp.dim.x * j + i] = 100;
             
             for (int step_x = -step; step_x <= step; step_x++)
             {
@@ -172,8 +172,9 @@ namespace param_env {
                 { 
                   Eigen::Vector3i idx_inf(i + step_x, j + step_y, m + step_z);
                   if(grid_map.isInMap(idx_inf))
-                  {
-                    map_resp.data[ map_resp.dim.y *  map_resp.dim.x * (m + step_z) +  +  map_resp.dim.x * (j + step_y) + i + step_x] = 100;
+                  { 
+
+                    map_resp.data[ map_resp.dim.y *  map_resp.dim.x * idx_inf(2) +  map_resp.dim.x * idx_inf(1) + idx_inf(0)] = 100;
                   }
 
                 }
@@ -182,9 +183,12 @@ namespace param_env {
           }
           else
           {
-            map_resp.data[map_resp.dim.y *  map_resp.dim.x * m +  map_resp.dim.x * j + i ] = 0;
-            map_resp_no_infla.data[ map_resp.dim.y *  map_resp.dim.x * m  +  +  map_resp.dim.x * j + i] = 0;
-            
+            map_resp_no_infla.data[map_resp.dim.y *  map_resp.dim.x * m +  map_resp.dim.x * j + i ] = 0;
+
+            if (map_resp.data[ map_resp.dim.y *  map_resp.dim.x * m  +  +  map_resp.dim.x * j + i] != 100)
+            { 
+              map_resp.data[ map_resp.dim.y *  map_resp.dim.x * m  +  +  map_resp.dim.x * j + i] = 0;
+            }
           }
         
         }

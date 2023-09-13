@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   kr_planning_msgs
   param_env_msgs
+  vicon_env
 )
 
 include_directories(

@@ -269,7 +269,7 @@ void pubSensedPoints() {
   _all_cloud_pub.publish(globalCloud_pcd);
 
   if (_publish_grid_centers) {
-    _grid_map.fillMap(cloudMap, _mav_radius);
+    _grid_map.fillMap(cloudMap, 0.0);
     _grid_map.publishMap(gridCloudMap);
     std::cout << "gridCloudMap.size()" << gridCloudMap.size() << std::endl;
 

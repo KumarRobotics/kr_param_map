@@ -70,9 +70,6 @@ vicon_env::SemanticArray global_semantics_msg;
 
 vector<string> obs_names;
 
-double _cylinder_radius;
-
-
 std::string _semantic_path;
 
 
@@ -110,7 +107,7 @@ Eigen::Vector2i getTypeNum(std::string obs_name){
 
 
   int obs_num = 0;
-  for (int i = 11; obs_name[i] != '\0'; ++i)
+  for (int i = 11; obs_name[i] != '/' && obs_name[i] != '\0'; ++i)
   {
     obs_num *= 10;
     obs_num += obs_name[i] - '0';
@@ -527,9 +524,6 @@ int main(int argc, char** argv) {
   n.param("sensing/radius", _sensing_range, 5.0);
   n.param("sensing/rate", _sense_rate, 10.0);
   
-
-  n.param("cylinder_radius", _cylinder_radius, 0.5);
-
 
   n.param("semantic_path", _semantic_path, string("case1.csv"));
 

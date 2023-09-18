@@ -2,6 +2,9 @@
 #include <geometry_msgs/Vector3.h>
 #include <math.h>
 #include <nav_msgs/Odometry.h>
+#include <param_env_msgs/changeMap.h>
+#include <pcl/common/common.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -13,8 +16,8 @@
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud_conversion.h>
-#include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Int32.h>
 #include <visualization_msgs/MarkerArray.h>
 
 #include <Eigen/Eigen>
@@ -25,7 +28,9 @@
 #include <map_utils/geo_map.hpp>
 #include <map_utils/grid_map.hpp>
 #include <map_utils/map_basics.hpp>
+#include <map_utils/map_to_voxel.hpp>
 #include <random>
+#include <string>
 // We use SDL_image to load the image from disk
 #include <SDL/SDL_image.h>
 
@@ -33,7 +38,9 @@ using namespace std;
 
 std::string _frame_id;
 ros::Publisher _all_cloud_pub, _all_map_pub;
-ros::Subscriber _res_sub, _gen_map_sub;
+ros::Subscriber _res_sub;
+ros::ServiceServer _change_map_service;
+
 int _mode;
 sensor_msgs::PointCloud2 globalCloud_pcd, globalMap_pcd;
 std::string topic_name;
@@ -43,13 +50,37 @@ pcl::PointCloud<pcl::PointXYZ> cloudMap, gridCloudMap;
 param_env::GridMapParams _grid_mpa;
 param_env::GridMap _grid_map;
 param_env::BasicMapParams _mpa;
-double _inflate_radius = 0.0;
+double _inflate_radius = 0.0, _mav_radius = 0.1;
+std::string _file_name;
 std::filesystem::directory_iterator file_iter;
-bool _auto_gen = false, _use_folder = false, _publish_grid_centers = false;
+std::vector<std::filesystem::path> filenames;
+int file_idx = 0;
+
+bool _auto_gen = false, _use_folder = false, _publish_grid_centers = false,
+     _evaluate = false;
 
 //*** image params ***/
 int _negate;
 double _occ_th;
+
+//*** ECI params ***/
+double _density_index, _clutter_index, _structure_index, _seed;
+Eigen::Vector3d _map_property;
+
+ros::Publisher _voxel_no_inflation_map_pub, _voxel_map_pub;
+
+void publishVoxelMap() {
+  /**comment it for normal version without publish the voxel message**/
+  kr_planning_msgs::VoxelMap voxel_map, voxel_no_inflation_map;
+
+  //param_env::gridMapToVoxelMap(_grid_map, _frame_id, voxel_no_inflation_map);
+  param_env::gridMapToInflaAndNoInflaVoxelMap(
+      _grid_map, _frame_id, _inflate_radius, voxel_map, voxel_no_inflation_map);
+
+  _voxel_map_pub.publish(voxel_map);
+  _voxel_no_inflation_map_pub.publish(voxel_no_inflation_map);
+  //std::cout << "publish the voxel map" << std::endl;
+}
 
 void toPcsMsg() {
   cloudMap.width = cloudMap.points.size();
@@ -171,28 +202,65 @@ void read_pcs_pcd(std::string& path) {
     PCL_ERROR("Couldn't read pcd file \n");
   }
 
+  pcl::PointXYZ minPt, maxPt, delta_change;
+  pcl::getMinMax3D(cloudMap, minPt, maxPt);
+  std::cout << "Max x: " << maxPt.x << " Max y: " << maxPt.y
+            << " Max z: " << maxPt.z << std::endl;
+  std::cout << "Min x: " << minPt.x << " Min y: " << minPt.y
+            << " Min z: " << minPt.z << std::endl;
+
+  delta_change.x = _mpa.map_origin_(0) - minPt.x;
+  delta_change.y = _mpa.map_origin_(1) - minPt.y;
+  delta_change.z = _mpa.map_origin_(2) - minPt.z;
+
+  for (auto& pt : cloudMap) {
+    pt.x += delta_change.x;
+    pt.y += delta_change.y;
+    pt.z += delta_change.z;
+  }
+
+  std::cout << "cloudMap.size()" << cloudMap.size() << std::endl;
+
   toPcsMsg();
 }
 
 /*** randomly gen points  ***/
-void gen_pcs(float bound = 50, int num = 10000) {
-  std::default_random_engine random(time(NULL));
-  std::uniform_real_distribution<double> r(-bound, bound);
+void gen_pcs(int num = 1000) {
+  std::default_random_engine eng(_seed);
+
+  std::uniform_real_distribution<double> x_range(
+      _mpa.map_origin_(0), _mpa.map_size_(0) + _mpa.map_origin_(0));
+  std::uniform_real_distribution<double> y_range(
+      _mpa.map_origin_(1), _mpa.map_size_(1) + _mpa.map_origin_(1));
+  std::uniform_real_distribution<double> z_range(
+      _mpa.map_origin_(2), _mpa.map_size_(2) + _mpa.map_origin_(2));
+
   int loop_n = 0;
 
   while (loop_n < num) {
-    float ax = r(random);
-    float ay = r(random);
-    float az = r(random);
-    float fx1 = bound / 4.0;
-    float fy1 = bound / 4.0;
-    float fy2 = bound / 4.0;
-    float fz2 = bound / 4.0;
-    if (ax < fx1 && ax > -fx1 && ay < fy1 && ay > -fy1) continue;
-    if (ay < fy2 && ay > -fy2 && az < fz2 && az > -fz2) continue;
+    float ax = x_range(eng);
+    float ay = y_range(eng);
+    float az = z_range(eng);
     cloudMap.points.push_back(pcl::PointXYZ(ax, ay, az));
     loop_n++;
   }
+
+  toPcsMsg();
+}
+
+void gen_ECI_pcs() {
+  std::default_random_engine eng(_seed);
+
+  std::uniform_real_distribution<double> x_range(
+      _mpa.map_origin_(0), _mpa.map_size_(0) + _mpa.map_origin_(0));
+  std::uniform_real_distribution<double> y_range(
+      _mpa.map_origin_(1), _mpa.map_size_(1) + _mpa.map_origin_(1));
+  std::uniform_real_distribution<double> z_range(
+      _mpa.map_origin_(2), _mpa.map_size_(2) + _mpa.map_origin_(2));
+
+  _grid_map.setUniRand(eng);
+  _grid_map.ECIgenerate(_density_index, _clutter_index, _structure_index);
+  _grid_map.getObsPts(cloudMap);
 
   toPcsMsg();
 }
@@ -202,19 +270,26 @@ void pubSensedPoints() {
   _all_cloud_pub.publish(globalCloud_pcd);
 
   if (_publish_grid_centers) {
-    _grid_map.fillMap(cloudMap, _inflate_radius);
+    _grid_map.fillMap(cloudMap, 0.1);
     _grid_map.publishMap(gridCloudMap);
+    std::cout << "gridCloudMap.size()" << gridCloudMap.size() << std::endl;
 
     pcl::toROSMsg(gridCloudMap, globalMap_pcd);
     globalMap_pcd.header.frame_id = _frame_id;
     _all_map_pub.publish(globalMap_pcd);
+  }
+
+  if (_evaluate) {
+    _map_property = _grid_map.evaluateEnv(_mav_radius);
   }
 }
 
 void readMap(std::string file_path) {
   switch (_mode) {
     case 0:
-      gen_pcs();
+      // gen_pcs();
+      gen_ECI_pcs();
+      _seed += 1;
       break;
     case 1: {
       read_img(file_path);
@@ -242,39 +317,46 @@ void readMap(std::string file_path) {
 }
 
 bool nextFile() {
-  file_iter++;
-  if (file_iter == std::filesystem::directory_iterator()) {
-    ROS_INFO("No more files in directory");
-    return false;
+  file_idx++;
+  if (file_idx >= filenames.size()) {
+    file_idx = 0;
+    ROS_WARN("No more files to read! Starting from 0 again.");
   }
+
   cloudMap.clear();
   _grid_map.clearAllOcc();
-  readMap(file_iter->path());
+  _file_name = filenames[file_idx].string();
+  readMap(_file_name);
+
   return true;
 }
 
 void resCallback(const std_msgs::Float32& msg) {
 
-
   float res = msg.data;
   float inv_res = 1.0 / res;
 
-  if (inv_res - float((int)inv_res) < 1e-6) 
-  {
+  if (inv_res - float((int)inv_res) < 1e-6) {
+    _grid_mpa.resolution_ = res;
+    _grid_map.initMap(_grid_mpa);
 
-  _grid_mpa.resolution_ = res;
-  _grid_map.initMap(_grid_mpa);
-
-  pubSensedPoints();
-  }
-  else
-  {
+    pubSensedPoints();
+  } else {
     ROS_WARN("The resolution is not valid! Try a different one !");
   }
 
 }
 
-void genMapCallback(const std_msgs::Bool& msg) { nextFile(); }
+// ToDo: Change to a specific map specified by the message
+bool genMapCallback(param_env_msgs::changeMap::Request& req,
+                    param_env_msgs::changeMap::Response& res) {
+  nextFile();
+  res.density_index = _map_property(0);
+  res.clutter_index = _map_property(1);
+  res.structure_index = _map_property(2);
+  res.file_name.data = _file_name;
+  return true;
+}
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "param_map");
@@ -284,7 +366,12 @@ int main(int argc, char** argv) {
   _all_map_pub = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
 
   _res_sub = nh.subscribe("change_res", 10, resCallback);
-  _gen_map_sub = nh.subscribe("change_map", 10, genMapCallback);
+  _change_map_service = nh.advertiseService("change_map", genMapCallback);
+
+  _voxel_map_pub =
+      nh.advertise<kr_planning_msgs::VoxelMap>("/mapper/local_voxel_map", 1);
+  _voxel_no_inflation_map_pub = nh.advertise<kr_planning_msgs::VoxelMap>(
+      "/mapper/local_voxel_no_inflation_map", 1);
 
   nh.param("map/x_size", _mpa.map_size_(0), 40.0);
   nh.param("map/y_size", _mpa.map_size_(1), 40.0);
@@ -299,6 +386,14 @@ int main(int argc, char** argv) {
 
   nh.param("map/auto_change", _auto_gen, false);
   nh.param("map/publish_grid_centers", _publish_grid_centers, false);
+
+  nh.param("map/evaluate", _evaluate, false);
+  nh.param("map/mav_radius", _mav_radius, 0.1);
+
+  nh.param("params/density_index", _density_index, 0.1);
+  nh.param("params/clutter_index", _clutter_index, 0.1);
+  nh.param("params/structure_index", _structure_index, 0.1);
+  nh.param("params/seed", _seed, 0.1);
 
   // set up basic parameters for grid map
   _grid_mpa.basic_mp_ = _mpa;
@@ -333,20 +428,31 @@ int main(int argc, char** argv) {
   if (_use_folder) {
     file_iter = std::filesystem::directory_iterator(folder_path);
     readMap(file_iter->path());
+    // new stuff so we read the names in order
+    for (const auto& entry : std::filesystem::directory_iterator(folder_path)) {
+      filenames.push_back(entry.path());
+    }
+    std::sort(filenames.begin(), filenames.end());
+
   } else {
     nh.param("file_path", file_path, std::string("path"));
     readMap(file_path);
   }
 
-  ros::Rate loop_rate(10.0);
+  ros::Rate loop_rate(5.0);
   bool success = true;
 
   while (ros::ok()) {
     if (_auto_gen && _use_folder && success) {
       success = nextFile();
+    } else if (_auto_gen && _mode == 0) {
+      cloudMap.clear();
+      _grid_map.clearAllOcc();
+      readMap(file_path);
     }
 
     ros::spinOnce();
+    publishVoxelMap();
     loop_rate.sleep();
   }
 }

@@ -6,7 +6,10 @@
 #include <map>
 #include <string>
 #include <map_utils/map_basics.hpp>
-
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/search/kdtree.h>
 
 namespace param_env
 {
@@ -85,6 +88,231 @@ namespace param_env
       std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
 
     }
+
+    Eigen::Vector3d evaluateEnv(double mav_radius)
+    {
+      int occ_num = 0, con_num = 0;
+      float max_dis = 0.0; //SquaredDistance
+      
+      std::vector<Eigen::Vector3i> neighbors;
+      neighbors.push_back(Eigen::Vector3i(0, 0,  1));
+      neighbors.push_back(Eigen::Vector3i(0, 0, -1));
+      neighbors.push_back(Eigen::Vector3i(0,  1, 0));
+      neighbors.push_back(Eigen::Vector3i(0, -1, 0));
+      neighbors.push_back(Eigen::Vector3i( 1, 0, 0));
+      neighbors.push_back(Eigen::Vector3i(-1, 0, 0));
+
+      // kd tree setup
+      pcl::PointCloud<pcl::PointXYZ> cloud_all_map;
+      getObsPts(cloud_all_map);
+
+      if (cloud_all_map.size()<= 0)
+      {
+        std::cout << "no cloud for evaluation" << std::endl;
+
+        return Eigen::Vector3d(0, 0, 0);
+      } 
+      pcl::search::KdTree<pcl::PointXYZ> kdtreeMap;
+      kdtreeMap.setInputCloud(cloud_all_map.makeShared());
+      std::vector<int> pointIdxRadiusSearch;
+      std::vector<float> pointRadiusSquaredDistance;
+
+      for (int x = 0; x < mp_.map_grid_size_(0); ++x)
+        for (int y = 0; y < mp_.map_grid_size_(1); ++y)
+          for (int z = 0; z < mp_.map_grid_size_(2); ++z)
+          {
+            if (occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] > mp_.min_thrd_) 
+            {
+              //std::cout << occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] << std::endl;
+              occ_num += 1;
+
+
+              // check surroundings
+              for (auto &nbr : neighbors)
+              {
+
+                Eigen::Vector3i pt = Eigen::Vector3i(x, y, z) + nbr;
+                if (!isOcc(pt))
+                {
+                  con_num += 1;
+                  break;
+                }
+              }
+
+            }else
+            {
+              //free grid, let's compute the dispersion
+              pointIdxRadiusSearch.clear();
+              pointRadiusSquaredDistance.clear();
+
+
+              Eigen::Vector3d pos;
+              indexToPos(Eigen::Vector3i(x, y, z), pos);
+
+              pcl::PointXYZ searchPoint(pos(0), pos(1), pos(2));
+
+
+              if (kdtreeMap.nearestKSearch(searchPoint, 1,
+                                            pointIdxRadiusSearch,
+                                            pointRadiusSquaredDistance) > 0)
+              {
+                if (pointRadiusSquaredDistance[0] > max_dis)
+                {
+                  max_dis = pointRadiusSquaredDistance[0];
+                }
+
+              }
+            }
+              
+          }
+
+      std::cout << "+++  std::sqrt(max_dis) : " << std::sqrt(max_dis) << std::endl;
+      std::cout << "+++  occ_num : " << occ_num << std::endl;
+      std::cout << "+++  con_num  : " <<  con_num  << std::endl;
+      double density_index   = ((double) occ_num) / ((double)(mp_.map_grid_size_(0) * mp_.map_grid_size_(1) * mp_.map_grid_size_(2)));
+      double structure_index = ((double) con_num) / (std::max(0.1, (double)(occ_num)));
+
+      double clutter_index   = mav_radius / std::sqrt(max_dis);
+
+
+      std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+      std::cout << "+++++++Enviornment Complexity Index (ECI) +++++++++++" << std::endl;
+      std::cout << "+++ density index     : " << density_index  << std::endl;
+      std::cout << "+++ clutter_index     : " << clutter_index  << std::endl;
+      std::cout << "+++ structure index   : " << structure_index  << std::endl;
+      std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+
+      return Eigen::Vector3d(density_index, clutter_index, structure_index);
+    }
+
+
+    void ECIgenerate(double density_index, double clutter_index,  double structure_index)
+    {
+
+
+      double cur_density_index = 0.0;
+      double cur_clutter_index = 0.0;
+      double cur_structure_index = 0.0;
+
+      int occ_num = 0, con_num = 0;
+      float max_dis = 0.0; //SquaredDistance
+
+      int exp_obs_num = int(density_index * mp_.map_grid_size_(0) * mp_.map_grid_size_(1) * mp_.map_grid_size_(2));
+      int sp_num = int((structure_index) * exp_obs_num);
+      int ave_sample_num =  int( exp_obs_num * 1.0 / (sp_num  * 1.0 ));
+
+      std::cout <<  "exp_obs_num is " << exp_obs_num << std::endl;
+      std::cout <<  "ave_sample_num is " << ave_sample_num << std::endl;
+      std::cout <<  "sp_num is " << sp_num << std::endl;
+
+
+      std::uniform_real_distribution<double> rand_scale_1 = std::uniform_real_distribution<double>(0.0, mp_.map_grid_size_(0)); 
+      std::uniform_real_distribution<double> rand_scale_2 = std::uniform_real_distribution<double>(0.0, mp_.map_grid_size_(1));
+      std::uniform_real_distribution<double> rand_scale_3 = std::uniform_real_distribution<double>(0.0, mp_.map_grid_size_(2));
+
+
+      std::normal_distribution<double> rand_x = std::normal_distribution<double>(0, clutter_index); 
+      std::normal_distribution<double> rand_y = std::normal_distribution<double>(0, clutter_index); 
+      std::normal_distribution<double> rand_z = std::normal_distribution<double>(0, clutter_index); 
+      // Mean and Standard deviation
+
+      Eigen::Vector3d cpt, ob_pt;  // center points, object points
+
+      while (abs(cur_density_index- density_index) > 1e-3) {
+
+        getUniRandPos(cpt);  //uniform random points
+
+        
+        if (isOcc(cpt) != 0) {
+          continue;
+        }
+        setOcc(cpt);
+        occ_num += 1;
+
+
+        int i = 0;
+        while (i < sp_num)
+        {
+          Eigen::Vector3d d_step(rand_scale_1(eng_) * rand_x(eng_), rand_scale_2(eng_) * rand_y(eng_), rand_scale_3(eng_) * rand_z(eng_));
+          //std::cout <<  "d_step is " << d_step << std::endl;
+          ob_pt = cpt + mp_.resolution_ * d_step;
+          i += 1;
+
+          if (isOcc(ob_pt) != 0) {
+            continue;
+          }
+
+
+
+          setOcc(ob_pt);
+          occ_num += 1;
+        }        
+        cur_density_index  = ((double) occ_num) / ((double)(mp_.map_grid_size_(0) * mp_.map_grid_size_(1) * mp_.map_grid_size_(2)));
+
+        
+      }
+
+      return;
+
+    }
+
+
+    double getMapMaxDis()
+    {
+      // kd tree setup
+      pcl::PointCloud<pcl::PointXYZ> cloud_all_map;
+      getObsPts(cloud_all_map);
+
+      double max_dis;
+
+      if (cloud_all_map.size()<= 0)
+      {
+        std::cout << "no cloud for evaluation" << std::endl;
+
+        return 0.0;
+      } 
+      pcl::search::KdTree<pcl::PointXYZ> kdtreeMap;
+      kdtreeMap.setInputCloud(cloud_all_map.makeShared());
+      std::vector<int> pointIdxRadiusSearch;
+      std::vector<float> pointRadiusSquaredDistance;
+
+      for (int x = 0; x < mp_.map_grid_size_(0); ++x)
+        for (int y = 0; y < mp_.map_grid_size_(1); ++y)
+          for (int z = 0; z < mp_.map_grid_size_(2); ++z)
+          {
+            if (occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] <= mp_.min_thrd_) 
+            {
+              //free grid, let's compute the dispersion
+              pointIdxRadiusSearch.clear();
+              pointRadiusSquaredDistance.clear();
+
+              Eigen::Vector3d pos;
+              indexToPos(Eigen::Vector3i(x, y, z), pos);
+
+              pcl::PointXYZ searchPoint(pos(0), pos(1), pos(2));
+
+
+              if (kdtreeMap.nearestKSearch(searchPoint, 1,
+                                            pointIdxRadiusSearch,
+                                            pointRadiusSquaredDistance) > 0)
+              {
+                if (pointRadiusSquaredDistance[0] > max_dis)
+                {
+                  max_dis = pointRadiusSquaredDistance[0];
+                }
+
+              }
+            }
+              
+          }
+
+      return std::sqrt(max_dis);
+    }   
+
+
+
+
+
 
     // get the map parameters
     void getMapParams(GridMapParams &mpa)

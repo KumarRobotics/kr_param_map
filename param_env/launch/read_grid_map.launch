@@ -4,8 +4,8 @@
   <arg name="map_size_x" default="20"/>
   <arg name="map_size_y" default="10"/>
   <arg name="map_size_z" default="3"/>
-  <arg name="map_x_origin" default="-5.0"/>
-  <arg name="map_y_origin" default="-10.0"/>
+  <arg name="map_x_origin" default="-10.0"/>
+  <arg name="map_y_origin" default="-5.0"/>
   <arg name="map_z_origin" default="-0.1"/>
 
   <arg name="cloud" default="/read_grid_map/global_gridmap"/>
@@ -26,6 +26,11 @@
     <param name="map/frame_id"      value="$(arg map_frame_id)" />
     <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
 
+
+    <!-- for evaluation -->
+    <param name="map/mav_radius" value="0.2"/> 
+    <param name="map/evaluate"   value="true"/> 
+
     <!-- randomly change the map without trigger -->
     <param name="map/auto_change"    value="false"/>
 
@@ -38,14 +43,22 @@
            2 read the ros bag poind cloud 1
            3 read the ros bag poind cloud 2
            4 read pcd file -->
-    <param name="map/mode"       value="1" />
+    <param name="map/mode"       value="0" />
+
+
+    <!-- mode 0 eg -->
+    <param name="params/density_index"     value="0.2"/>  <!-- 0-0.5 -->
+    <param name="params/clutter_index"     value="0.5"/> 
+    <param name="params/structure index"   value="0.1"/> 
+    <param name="params/seed"              value="1"/>
+
 
     <!-- for multi-map reader, set folder path and use_folder as true -->
-    <param name="folder_path" value="$(find param_env)/data/img/maze/"/>
+    <param name="folder_path" value="$(find param_env)/data/pcd/urban/"/>
     <param name="use_folder"  value="true"/>
 
     <!-- mode 1 eg -->
-    <param name="file_path" value="$(find param_env)/data/img/maze/maze8.png"/>
+    <param name="file_path" value="$(find param_env)/data/img/all/multi_gap.png"/>
     <param name="img/negate" value="0"/>
     <param name="img/occ_th" value="0.6"/>
 
@@ -59,7 +72,7 @@
     <!-- point clouds topic name in the bag file -->
 
     <!-- mode 4 eg -->
-    <!-- <param name="file_path" value="$(find param_env)/data/pcd/cloud_0917.pcd"/> -->
+    <!-- <param name="file_path" value="$(find param_env)/data/pcd/urban/72.pcd"/> -->
 
   </node>
 

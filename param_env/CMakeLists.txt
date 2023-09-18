@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   pcl_conversions
+  kr_planning_msgs
+  param_env_msgs
 )
 
 include_directories(

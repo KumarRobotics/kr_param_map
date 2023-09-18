@@ -87,6 +87,7 @@ void pubSensedPoints() {
 }
 
 void resCallback(const std_msgs::Float32& msg) {
+
   float res = msg.data;
   float inv_res = 1.0 / res;
 
@@ -102,6 +103,7 @@ void resCallback(const std_msgs::Float32& msg) {
   } else {
     ROS_WARN("The resolution is not valid! Try a different one !");
   }
+
 }
 
 bool genMapCallback(param_env_msgs::changeMap::Request& req,

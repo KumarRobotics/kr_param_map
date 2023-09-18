@@ -332,6 +332,7 @@ bool nextFile() {
 }
 
 void resCallback(const std_msgs::Float32& msg) {
+
   float res = msg.data;
   float inv_res = 1.0 / res;
 
@@ -343,6 +344,7 @@ void resCallback(const std_msgs::Float32& msg) {
   } else {
     ROS_WARN("The resolution is not valid! Try a different one !");
   }
+
 }
 
 // ToDo: Change to a specific map specified by the message

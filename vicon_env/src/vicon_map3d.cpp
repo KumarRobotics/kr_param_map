@@ -60,6 +60,7 @@ pcl::PointCloud<pcl::PointXYZ> cloudMap;
 vicon_env::SemanticArray global_semantics_msg;
 
 vector<string> obs_names;
+double _cylinder_radius;
 std::string _semantic_path;
 
 enum SEMANTIC_TYPE
@@ -85,11 +86,13 @@ Eigen::Vector2i getTypeNum(std::string obs_name){
   else if(type == 'p'){
     type_and_num(0) = SEMANTIC_TYPE::POLYHEDRON;
   }else{
+
     return type_and_num;
   }
 
+
   int obs_num = 0;
-  for (int i = 11; obs_name[i] != '/' && obs_name[i] != '\0'; ++i)
+  for (int i = 11; obs_name[i] != '\0'; ++i)
   {
     obs_num *= 10;
     obs_num += obs_name[i] - '0';
@@ -144,7 +147,6 @@ void ReadSemantics(){
 
         std::cout << "model.r " << model.r << std::endl;
         std::cout << "model.h " << model.h <<std::endl;
-        std::cout << "model.id " << model.id <<std::endl;
 
         std::pair<int, vicon_env::Cylinder> temp(model_id, model);
         cylinders_map.insert(temp);
@@ -248,14 +250,17 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     }
   }
 
+
   if (update_obs){
     //std::cout << "get to update obs " << name <<std::endl;
     obs_names.push_back(name);
     pcl::PointXYZ pt_obs;
     //geometry_msgs::Pose pt;
     //pt.orientation.w = 1.0;
+
     // only enable the clyinders in the forest case
     // generate polar obs
+    
     double x, y, w;
 
     x = msg->pose.pose.position.y;
@@ -274,7 +279,8 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     // semantics_mk.id += 1;
     
     int num = type_and_num(1);
-    std::cout << "type_and_num " << type_and_num.transpose() <<std::endl;
+
+    //std::cout << "type_and_num " << type_and_num <<std::endl;
 
     switch (type_and_num(0))
     {
@@ -291,8 +297,8 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
         model.pos.x = x;
         model.pos.y = y;
 
-        std::cout << "x " << x <<std::endl;
-        std::cout << "y " << y <<std::endl;
+        // std::cout << "x " << x <<std::endl;
+        // std::cout << "y " << y <<std::endl;
 
         
         global_semantics_msg.cylinders.push_back(model);
@@ -302,6 +308,7 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
         int heiNum = ceil(model.h / _resolution);
         int widNum = ceil(model.r / _resolution) +1;
         double r_sqr = model.r * model.r;
+      
         for (int r = -widNum; r <= widNum; r++){
           for (int s = -widNum; s <= widNum; s++){
             for (int t = -2.0; t < heiNum; t++){
@@ -316,6 +323,8 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
             }
           }
         }
+
+
          _obs_num += 1;
         //std::cout << "finish" <<std::endl;
 
@@ -440,12 +449,12 @@ int main(int argc, char** argv) {
 
   ros::init(argc, argv, "vicon_map_node");
   ros::NodeHandle n("~");
-  // point cloud publisher
+
   _all_map_cloud_pub = n.advertise<sensor_msgs::PointCloud2>("/global_cloud", 1);
-  // semantics publisher
+
+  // semantics publishers
   _all_map_semantics_pub = n.advertise<vicon_env::SemanticArray>("/global_semantics", 1);
   //_all_map_semantics_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_semantics_vis", 1);
-
 
   _all_obs_sub = n.subscribe("vicon_all_obs", 50, &obsCallback);
 
@@ -462,6 +471,7 @@ int main(int argc, char** argv) {
 
   n.param("sensing/radius", _sensing_range, 5.0);
   n.param("sensing/rate", _sense_rate, 10.0);
+  n.param("cylinder_radius", _cylinder_radius, 0.5);
   n.param("semantic_path", _semantic_path, string("case1.csv"));
 
   // semantics_mk.header.frame_id = _frame_id;

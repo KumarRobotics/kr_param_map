@@ -45,7 +45,7 @@ int _num = 0.0, _initial_num;
 bool _save_map = false, _auto_gen = false, _evaluate = false;
 std::string _dataset_path;
 int _seed;  // random seed
-double _inflate_radius = 0.0, _mav_radius = 0.1;
+double _inflate_radius, _mav_radius, _add_ground;
 Eigen::Vector3d _map_property;
 
 ros::Publisher _voxel_no_inflation_map_pub, _voxel_map_pub;
@@ -68,7 +68,10 @@ void publishVoxelMap() {
 
 void pubSensedPoints() {
   _struct_map_gen.getGridMap(_grid_map);
-
+  if(_add_ground > 0)
+  {
+    _grid_map.addGround(_add_ground);
+  }
   pcl::toROSMsg(cloudMap, globalMap_pcd);
   globalMap_pcd.header.frame_id = _frame_id;
   _all_map_cloud_pub.publish(globalMap_pcd);
@@ -149,6 +152,7 @@ int main(int argc, char** argv) {
   nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
   nh.param("map/resolution", _grid_mpa.resolution_, 0.1);
   nh.param("map/inflate_radius", _inflate_radius, 0.1);
+  nh.param("map/add_ground", _add_ground, 0.0);
 
   _grid_mpa.basic_mp_ = _mpa;
 

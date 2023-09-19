@@ -50,7 +50,7 @@ pcl::PointCloud<pcl::PointXYZ> cloudMap, gridCloudMap;
 param_env::GridMapParams _grid_mpa;
 param_env::GridMap _grid_map;
 param_env::BasicMapParams _mpa;
-double _inflate_radius = 0.0, _mav_radius = 0.1;
+double _inflate_radius, _mav_radius, _add_ground;
 std::string _file_name;
 std::filesystem::directory_iterator file_iter;
 std::vector<std::filesystem::path> filenames;
@@ -268,7 +268,10 @@ void gen_ECI_pcs() {
 void pubSensedPoints() {
   globalCloud_pcd.header.frame_id = _frame_id;
   _all_cloud_pub.publish(globalCloud_pcd);
-
+  if(_add_ground > 0)
+  {
+    _grid_map.addGround(_add_ground);
+  }
   if (_publish_grid_centers) {
     _grid_map.fillMap(cloudMap, 0.1);
     _grid_map.publishMap(gridCloudMap);
@@ -381,6 +384,7 @@ int main(int argc, char** argv) {
   nh.param("map/resolution", _grid_mpa.resolution_, 0.1);
   nh.param("map/frame_id", _frame_id, string("map"));
   nh.param("map/inflate_radius", _inflate_radius, 0.1);
+  nh.param("map/add_ground", _add_ground, 0.0);
 
   nh.param("map/auto_change", _auto_gen, false);
   nh.param("map/publish_grid_centers", _publish_grid_centers, false);

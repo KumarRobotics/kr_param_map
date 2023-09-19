@@ -48,7 +48,8 @@ double _x_l, _x_h, _y_l, _y_h, _w_l, _w_h, _h_l, _h_h;
 double _z_limit, _sensing_range, _resolution, _sense_rate, _init_x, _init_y;
 std::string _frame_id;
 bool _set_semantics = false;
-
+bool _sense_rotate, _has_ground = false;
+double _add_ground = 0.0;
 int circle_num_;
 double radius_l_, radius_h_, z_l_, z_h_;
 double theta_;
@@ -99,7 +100,7 @@ void publishVoxelMap() {
 
   _voxel_map_pub.publish(voxel_map);
   _voxel_no_inflation_map_pub.publish(voxel_no_inflation_map);
-  std::cout << "publish the voxel map, time is " << (t1 - ros::Time::now()).toSec() << std::endl;
+  //std::cout << "publish the voxel map, time is " << (t1 - ros::Time::now()).toSec() << std::endl;
 }
 
 
@@ -198,10 +199,10 @@ void ReadSemantics(){
         //get the normals
         //Eigen::Matrix2d R;
         double alpha = data_line(2) * M_PI / 180.0;
-        std::cout << " alpha  " <<  alpha << std::endl;
+        std::cout << "alpha  " <<  alpha << std::endl;
 
         double h = data_line(3);
-        std::cout << " height is " <<  h << std::endl;
+        std::cout << "height is " <<  h << std::endl;
 
         // R << std::cos(alpha), -std::sin(alpha),
         //      std::sin(alpha), std::cos(alpha);
@@ -222,7 +223,7 @@ void ReadSemantics(){
           pos = rotate * b_points.col(i);
           model.points[i].x = pos(0);
           model.points[i].y = pos(1);
-          model.points[i].z = 0.5 * h + pos(2);
+          model.points[i].z = pos(2);
 
           pos.normalize();
           model.normals[i].x = pos(0);
@@ -287,10 +288,17 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     // only enable the clyinders in the forest case
     // generate polar obs
     double x, y, w;
+   
+    if (_sense_rotate)
+    {
+      x =  msg->pose.pose.position.y;
+      y = -msg->pose.pose.position.x;
+    }else{
+      x = msg->pose.pose.position.x;
+      y = msg->pose.pose.position.y;     
+    }
 
-    x = msg->pose.pose.position.y;
-    y = -msg->pose.pose.position.x;
-
+    
     x = floor(x / _resolution) * _resolution + _resolution / 2.0;
     y = floor(y / _resolution) * _resolution + _resolution / 2.0;
 
@@ -377,6 +385,8 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
 
         // std::cout << "size is " << size << std::endl;
         // std::cout << "w1 is " << w1 << "w2 is " << w2 << std::endl;
+        double z = msg->pose.pose.position.z;     
+        z = floor(z / _resolution) * _resolution + _resolution / 2.0;
 
 
 
@@ -390,16 +400,16 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
 
         global_semantics_msg.polyhedrons.push_back(model);
 
-
+        std::cout << "model.points[5].z " << model.points[5].z<< std::endl;
         // publish the point cloud 
-        int heiNum = ceil(2.0 * model.points[0].z / _resolution);
+        int heiNum = ceil(model.points[5].z / _resolution);
         int widNum1 = ceil(w1 / _resolution) ;
         int widNum2 = ceil(w2 / _resolution) ;
         Eigen::Vector3d box_scale;
 
         for (int r = -widNum1; r <  widNum1; r++){
           for (int s = -widNum2; s < widNum2; s++){
-            for (int t = -2.0; t < heiNum; t++){
+            for (int t = -heiNum; t < heiNum; t++){
 
               box_scale = rotate * Eigen::Vector3d( (r + 0.5) * _resolution, 
                                                     (s + 0.5) * _resolution,
@@ -407,7 +417,7 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
                               
               pt_obs.x = x + box_scale(0) + 1e-2;
               pt_obs.y = y + box_scale(1) + 1e-2;
-              pt_obs.z =     box_scale(2) + 1e-2;
+              pt_obs.z = z + box_scale(2) + 1e-2;
 
               cloudMap.points.push_back(pt_obs);
             }
@@ -417,8 +427,6 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
         std::cout << "finish" <<std::endl;
         break;
       }
-
-
     }
 
     cloudMap.width = cloudMap.points.size();
@@ -427,11 +435,15 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     pcl::toROSMsg(cloudMap, globalMap_pcd);
     globalMap_pcd.header.frame_id = _frame_id;
 
-    std::cout << "get to update _grid_map " << name <<std::endl;
+
     globalMap_pcd.header.stamp = ros::Time::now();
     _all_map_cloud_pub.publish(globalMap_pcd);
     _all_map_semantics_pub.publish(global_semantics_msg);
     _grid_map.fillMap(cloudMap, 0.0);
+    if(!_has_ground && _add_ground > 0)
+    {
+      _grid_map.addGround(_add_ground);
+    }
 
 
   }
@@ -487,16 +499,18 @@ int main(int argc, char** argv) {
 
   nh.param("map/resolution", _resolution, 0.1);
   nh.param("map/frame_id", _frame_id, string("map"));
+  nh.param("map/inflate_radius", _inflate_radius, 0.1);
+  nh.param("map/add_ground", _add_ground, 0.0);
+
 
   nh.param("sensing/radius", _sensing_range, 5.0);
   nh.param("sensing/rate", _sense_rate, 10.0);
+  nh.param("sensing/rotate", _sense_rotate, false);
   nh.param("semantic_path", _semantic_path, string("case1.csv"));
 
   // nh.param("map/x_origin", _mpa.map_origin_(0), -20.0);
   // nh.param("map/y_origin", _mpa.map_origin_(1), -20.0);
   // nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
-
-  nh.param("map/inflate_radius", _inflate_radius, 0.1);
 
 
   nh.param("map/x_size", _mpa.map_size_(0), 40.0);

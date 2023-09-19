@@ -1,11 +1,11 @@
 <launch>
 
   <arg name="map_frame_id" default="map"/>
-  <arg name="map_size_x" default="20"/>
-  <arg name="map_size_y" default="10"/>
+  <arg name="map_size_x" default="6"/>
+  <arg name="map_size_y" default="12"/>
   <arg name="map_size_z" default="3"/>
-  <arg name="map_x_origin" default="-10.0"/>
-  <arg name="map_y_origin" default="-5.0"/>
+  <arg name="map_x_origin" default="-3.0"/>
+  <arg name="map_y_origin" default="-2.0"/>
   <arg name="map_z_origin" default="-0.1"/>
 
   <arg name="vicon_topic" default="/vicon/all_obs_odom"/>
@@ -24,14 +24,19 @@
     <param name="map/resolution" value="0.1"/>        
     <param name="map/frame_id"     value="$(arg map_frame_id)" />   
     <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
-    
+    <param name="map/add_ground"   value="0.1"/> <!-- 0.2 m-->
 
-    <param name="sensing/radius" value="20.0"/>
-    <param name="sensing/rate"   value="1.0"/>
+
+    <param name="sensing/radius"       value="20.0"/>
+    <param name="sensing/rate"         value="1.0"/>
+    <param name="sensing/rotate"       value="false"/>
+
 
     <remap from="~vicon_all_obs" to="$(arg vicon_topic)"/>
     <param name="semantic_path" value="$(arg semantic_path)"/>
 
+
+]
   </node>
 
   <arg name="rviz_config" default="$(find vicon_env)/launch/vicon.rviz"/>

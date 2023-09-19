@@ -253,7 +253,6 @@ namespace param_env
       }
 
       return;
-
     }
 
 
@@ -310,9 +309,23 @@ namespace param_env
     }   
 
 
+    void addGround(double h) //ground height
+    {
 
+      int h_grids =  ceil(h / mp_.resolution_);
+      for (int x = 0; x < mp_.map_grid_size_(0); ++x)
+        for (int y = 0; y < mp_.map_grid_size_(1); ++y)
+          for (int z = 0; z < h_grids; ++z)
+          {
 
+            Eigen::Vector3i idx(x, y, z);
+            if (isOcc(idx) != 0) {
+              continue;
+            }
+            setOcc(idx);
+          }
 
+    }
 
     // get the map parameters
     void getMapParams(GridMapParams &mpa)
@@ -369,6 +382,19 @@ namespace param_env
       occupancy_buffer_[getBufferCnt(id)] = mp_.clamp_max_log_;
       obs_pts.push_back(pos);
     }
+
+    // set occupancy to the map
+    void setOcc(const Eigen::Vector3i &id)
+    {
+      Eigen::Vector3d pos;
+      indexToPos(id, pos);
+      if (!isInMap(id))
+        return;
+
+      occupancy_buffer_[getBufferCnt(id)] = mp_.clamp_max_log_;
+      obs_pts.push_back(pos);
+    }
+
 
     // fill occupancies with point clouds
     void fillMap(pcl::PointCloud<pcl::PointXYZ> &cloudMap, double inflated)

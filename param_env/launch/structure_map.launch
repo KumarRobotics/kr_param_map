@@ -22,10 +22,11 @@
     <param name="map/y_origin"   value="$(arg map_y_origin)"/>
     <param name="map/z_origin"   value="$(arg map_z_origin)"/>
 
-    <param name="map/resolution" value="0.1"/>        
+    <param name="map/resolution" value="0.2"/>        
     <param name="map/frame_id"     value="$(arg map_frame_id)" />
     <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
-    
+    <param name="map/add_ground"   value="0.0"/> <!-- 0.2 m-->
+
     <!-- randomly change the map without trigger -->
     <param name="map/auto_change"    value="true"/>
 
@@ -37,8 +38,8 @@
     <param name="params/cylinder_ratio" value="0.15" type="double"/>
     <param name="params/circle_ratio"   value="0.01" type="double"/>
     <param name="params/gate_ratio"     value="0.05" type="double"/>
-    <param name="params/ellip_ratio"    value="0.10" type="double"/>
-    <param name="params/poly_ratio"     value="0.10" type="double"/>
+    <param name="params/ellip_ratio"    value="0.00" type="double"/>
+    <param name="params/poly_ratio"     value="0.00" type="double"/>
     
     <!-- initial params [0, 1]-->
     <param name="params/w1" value="0.5"/>

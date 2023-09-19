@@ -8,8 +8,9 @@ Panels:
         - /Status1
         - /Grid1/Offset1
         - /ParamMap1
+        - /VoxelMap1
       Splitter Ratio: 0.5
-    Tree Height: 692
+    Tree Height: 571
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -25,9 +26,10 @@ Panels:
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz/Time
+    Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: GridMap
+    SyncSource: StructMap
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -83,8 +85,8 @@ Visualization Manager:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: 4.9999799728393555
-            Min Value: 0.0009565904620103538
+            Max Value: 2.8499999046325684
+            Min Value: -0.05000000074505806
             Value: true
           Axis: Z
           Channel Name: intensity
@@ -120,7 +122,7 @@ Visualization Manager:
           Color: 211; 215; 207
           Color Transformer: AxisColor
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -135,7 +137,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -148,7 +150,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -163,9 +165,42 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
       Enabled: true
       Name: ParamMap
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 2.8500001430511475
+        Min Value: -0.05000000074505806
+        Value: true
+      Axis: Z
+      BoundScale: 0.10000000149011612
+      Channel Name: intensity
+      Class: kr_planning_rviz_plugins/VoxelMap
+      Color: 136; 138; 133
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      MeshAlpha: 0.20000000298023224
+      MeshColor: 0; 170; 255
+      MeshHeight: 0.5
+      Min Color: 0; 0; 0
+      Name: VoxelMap
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.20000000298023224
+      State: Occupied
+      Style: Squares
+      Topic: /mapper/local_voxel_map
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 243; 243; 243
@@ -194,7 +229,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 22.089397430419922
+      Distance: 17.981138229370117
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -202,9 +237,9 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.628454566001892
-        Y: -1.4676402807235718
-        Z: 4.333526134490967
+        X: 1.438033938407898
+        Y: -0.7636692523956299
+        Z: 4.337716102600098
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -212,7 +247,7 @@ Visualization Manager:
       Near Clip Distance: 0.009999999776482582
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 4.710098743438721
+      Yaw: 4.7101030349731445
     Saved: ~
 Window Geometry:
   Displays:
@@ -220,7 +255,7 @@ Window Geometry:
   Height: 1136
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000026c0000039dfc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000dafb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000039d000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c0000026100000001000001b40000039dfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000039d000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000074a00000073fc0100000002fb0000000800540069006d006501000000000000074a000003bc00fffffffb0000000800540069006d00650100000000000004500000000000000000000004d80000039d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000026c00000355fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000dafb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e000003550000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c0000026100000001000001b40000039dfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000039d0000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000008d800000073fc0100000002fb0000000800540069006d00650100000000000008d80000057100fffffffb0000000800540069006d00650100000000000004500000000000000000000006600000035500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -229,6 +264,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: false
-  Width: 1866
+  Width: 2264
   X: 2109
   Y: 285

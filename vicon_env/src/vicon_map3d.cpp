@@ -21,7 +21,9 @@
 // for semantic map visualization
 #include <visualization_msgs/MarkerArray.h>
 #include <vicon_env/SemanticArray.h>
-
+#include <map_utils/grid_map.hpp>
+#include <map_utils/map_basics.hpp>
+#include <map_utils/map_to_voxel.hpp>
 
 using namespace std;
 
@@ -71,6 +73,27 @@ enum SEMANTIC_TYPE
 bool _read_semantics = false;
 std::unordered_map<int, vicon_env::Cylinder> cylinders_map;
 std::unordered_map<int, vicon_env::Polyhedron> polyhedrons_map;
+
+ros::Publisher _voxel_no_inflation_map_pub, _voxel_map_pub;
+double _inflate_radius = 0.0;
+param_env::GridMapParams _grid_mpa;
+param_env::GridMap _grid_map;
+param_env::BasicMapParams _mpa;
+
+void publishVoxelMap() {
+  _grid_map.fillMap(cloudMap, 0.1);
+
+  /**comment it for normal version without publish the voxel message**/
+  kr_planning_msgs::VoxelMap voxel_map, voxel_no_inflation_map;
+
+  //param_env::gridMapToVoxelMap(_grid_map, _frame_id, voxel_no_inflation_map);
+  param_env::gridMapToInflaAndNoInflaVoxelMap(
+      _grid_map, _frame_id, _inflate_radius, voxel_map, voxel_no_inflation_map);
+
+  _voxel_map_pub.publish(voxel_map);
+  _voxel_no_inflation_map_pub.publish(voxel_no_inflation_map);
+  //std::cout << "publish the voxel map" << std::endl;
+}
 
 
 Eigen::Vector2i getTypeNum(std::string obs_name){
@@ -404,6 +427,7 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   globalMap_pcd.header.stamp = ros::Time::now();
   _all_map_cloud_pub.publish(globalMap_pcd);
   _all_map_semantics_pub.publish(global_semantics_msg);
+  publishVoxelMap();
   //std::cout << "cloudMap.points.size()" << cloudMap.points.size() << std::endl;
   return;
 }
@@ -439,30 +463,52 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
 int main(int argc, char** argv) {
 
   ros::init(argc, argv, "vicon_map_node");
-  ros::NodeHandle n("~");
+  ros::NodeHandle nh("~");
+
+  _all_obs_sub = nh.subscribe("vicon_all_obs", 50, &obsCallback);
+
   // point cloud publisher
-  _all_map_cloud_pub = n.advertise<sensor_msgs::PointCloud2>("/global_cloud", 1);
+  _all_map_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("/global_cloud", 1);
   // semantics publisher
-  _all_map_semantics_pub = n.advertise<vicon_env::SemanticArray>("/global_semantics", 1);
+  _all_map_semantics_pub = nh.advertise<vicon_env::SemanticArray>("/global_semantics", 1);
   //_all_map_semantics_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_semantics_vis", 1);
+  _voxel_map_pub =
+      nh.advertise<kr_planning_msgs::VoxelMap>("/mapper/local_voxel_map", 1);
+  _voxel_no_inflation_map_pub = nh.advertise<kr_planning_msgs::VoxelMap>(
+      "/mapper/local_voxel_no_inflation_map", 1);
+
+  nh.param("map/resolution", _resolution, 0.1);
+  nh.param("map/frame_id", _frame_id, string("map"));
+
+  nh.param("sensing/radius", _sensing_range, 5.0);
+  nh.param("sensing/rate", _sense_rate, 10.0);
+  nh.param("semantic_path", _semantic_path, string("case1.csv"));
+
+  // nh.param("map/x_origin", _mpa.map_origin_(0), -20.0);
+  // nh.param("map/y_origin", _mpa.map_origin_(1), -20.0);
+  // nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
+
+  nh.param("map/inflate_radius", _inflate_radius, 0.1);
 
 
-  _all_obs_sub = n.subscribe("vicon_all_obs", 50, &obsCallback);
+  nh.param("map/x_size", _mpa.map_size_(0), 40.0);
+  nh.param("map/y_size", _mpa.map_size_(1), 40.0);
+  nh.param("map/z_size", _mpa.map_size_(2), 5.0);
+  nh.param("map/x_origin", _mpa.map_origin_(0), -20.0);
+  nh.param("map/y_origin", _mpa.map_origin_(1), -20.0);
+  nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
 
+  // set up basic parameters for grid map
+  _grid_mpa.resolution_ = _resolution;
+  _grid_mpa.basic_mp_ = _mpa;
+  _grid_mpa.basic_mp_.min_range_ = _grid_mpa.basic_mp_.map_origin_;
+  _grid_mpa.basic_mp_.max_range_ =
+      _grid_mpa.basic_mp_.map_origin_ + _grid_mpa.basic_mp_.map_size_;
+  _grid_mpa.basic_mp_.map_volume_ = _grid_mpa.basic_mp_.map_size_(0) *
+                                    _grid_mpa.basic_mp_.map_size_(1) *
+                                    _grid_mpa.basic_mp_.map_size_(2);
+  _grid_map.initMap(_grid_mpa);
 
-  n.param("init_state_x", _init_x, 0.0);
-  n.param("init_state_y", _init_y, 0.0);
-
-  n.param("map/x_size", _x_size, 50.0);
-  n.param("map/y_size", _y_size, 50.0);
-  n.param("map/z_size", _z_size, 5.0);
-
-  n.param("map/resolution", _resolution, 0.1);
-  n.param("map/frame_id", _frame_id, string("map"));
-
-  n.param("sensing/radius", _sensing_range, 5.0);
-  n.param("sensing/rate", _sense_rate, 10.0);
-  n.param("semantic_path", _semantic_path, string("case1.csv"));
 
   // semantics_mk.header.frame_id = _frame_id;
   // semantics_mk.header.stamp = ros::Time::now();

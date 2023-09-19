@@ -50,4 +50,12 @@ target_link_libraries(read_grid_map
 
 add_dependencies(read_grid_map ${catkin_EXPORTED_TARGETS})
 
-  
+
+
+add_library(param_env include ${HEADER_FILES} src/structure_map.cpp)
+
+target_link_libraries(param_env
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+)
+add_dependencies(param_env  ${catkin_EXPORTED_TARGETS})

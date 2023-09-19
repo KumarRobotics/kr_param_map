@@ -18,7 +18,6 @@
   <depend>sdl</depend>
   <depend>sdl-image</depend>
   <depend>kr_planning_msgs</depend>
-  <depend>vicon_env</depend>
   <depend>param_env_msgs</depend>
 
   

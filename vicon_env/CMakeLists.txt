@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   pcl_conversions
+  kr_planning_msgs
+  param_env
 )
 find_package(PCL 1.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -42,22 +44,24 @@ generate_messages(
 catkin_package(
   CATKIN_DEPENDS
   message_runtime
-  DEPENDS
+  DEPENDS param_env
   )
   
 include_directories(
-# include
+  SYSTEM
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}
 )
 
-add_executable (vicon_map2d src/vicon_map2d.cpp )
+
+
+add_executable (vicon_map2d src/vicon_map2d.cpp)
 target_link_libraries(vicon_map2d
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}) 
 
-add_executable (vicon_map3d src/vicon_map3d.cpp )
+add_executable (vicon_map3d src/vicon_map3d.cpp)
 target_link_libraries(vicon_map3d
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}) 

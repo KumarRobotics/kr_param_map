@@ -1,6 +1,4 @@
 .rosinstall
 .rosinstall.bak
 .vscode/
-param_env/data/
-param_env/dataset/
 

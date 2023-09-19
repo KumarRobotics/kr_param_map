@@ -81,8 +81,15 @@ param_env::GridMap _grid_map;
 param_env::BasicMapParams _mpa;
 
 void publishVoxelMap() {
-  _grid_map.fillMap(cloudMap, 0.1);
 
+  if (cloudMap.size() <= 0)
+  {
+    return;
+  }
+
+  //std::cout << "cloudMap.size()" << cloudMap.size() << std::endl;
+  //_grid_map.clearAllOcc();
+  auto t1 = ros::Time::now();
   /**comment it for normal version without publish the voxel message**/
   kr_planning_msgs::VoxelMap voxel_map, voxel_no_inflation_map;
 
@@ -92,7 +99,7 @@ void publishVoxelMap() {
 
   _voxel_map_pub.publish(voxel_map);
   _voxel_no_inflation_map_pub.publish(voxel_no_inflation_map);
-  //std::cout << "publish the voxel map" << std::endl;
+  std::cout << "publish the voxel map, time is " << (t1 - ros::Time::now()).toSec() << std::endl;
 }
 
 
@@ -272,7 +279,7 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
   }
 
   if (update_obs){
-    //std::cout << "get to update obs " << name <<std::endl;
+    std::cout << "get to update obs " << name <<std::endl;
     obs_names.push_back(name);
     pcl::PointXYZ pt_obs;
     //geometry_msgs::Pose pt;
@@ -420,14 +427,15 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     pcl::toROSMsg(cloudMap, globalMap_pcd);
     globalMap_pcd.header.frame_id = _frame_id;
 
+    std::cout << "get to update _grid_map " << name <<std::endl;
+    globalMap_pcd.header.stamp = ros::Time::now();
+    _all_map_cloud_pub.publish(globalMap_pcd);
+    _all_map_semantics_pub.publish(global_semantics_msg);
+    _grid_map.fillMap(cloudMap, 0.0);
+
+
   }
   //std::cout << "cloudMap.points.size()" << cloudMap.points.size() << std::endl;
-
-
-  globalMap_pcd.header.stamp = ros::Time::now();
-  _all_map_cloud_pub.publish(globalMap_pcd);
-  _all_map_semantics_pub.publish(global_semantics_msg);
-  publishVoxelMap();
   //std::cout << "cloudMap.points.size()" << cloudMap.points.size() << std::endl;
   return;
 }
@@ -532,5 +540,6 @@ int main(int argc, char** argv) {
   while (ros::ok()) {
     ros::spinOnce();
     loop_rate.sleep();
+    publishVoxelMap();
   }
 }

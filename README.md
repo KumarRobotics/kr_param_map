@@ -4,6 +4,23 @@
 All in one! It's a revolution of map parameterization and representation for motion planning! Let's see.
 
 
+## About
+
+This repo is related to our evaluation research. If this repo helps your research, please cite our paper at:
+
+```
+@misc{shao2023design,
+      title={Design and Evaluation of Motion Planners for Quadrotors}, 
+      author={Yifei Simon Shao and Yuwei Wu and Laura Jarin-Lipschitz and Pratik Chaudhari and Vijay Kumar},
+      year={2023},
+      eprint={2309.13720},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO}
+}
+```
+
+
+
 ## 0. Setup
 
 

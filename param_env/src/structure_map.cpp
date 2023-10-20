@@ -6,6 +6,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/filters/extract_indices.h>
+
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -39,20 +41,99 @@ int _samples_on_map = 100;
 int _num = 0.0, _initial_num;
 bool _save_map = false, _auto_gen = false;
 std::string _dataset_path;
+std::string _clear_path;
 double _seed;  // random seed
+bool clear_3d = true, _clear_pos = false;
+std::vector<Eigen::Vector3d> clear_pos;
+
+void readClearPos()
+{
+  std::ifstream fp(_clear_path);
+  std::string line;
+  Eigen::Vector3d data_line;
+  std::cout << "_clear_path: "<< _clear_path<<std::endl;
+  while (getline(fp, line))
+  { 
+    std::string number;
+    std::istringstream readstr(line);
+    int i = 0;
+    while (getline(readstr,number,','))
+    {
+      std::cout << "number: "<< number<<std::endl;
+      data_line(i) = atof(number.c_str());
+      i += 1;
+    }
+    clear_pos.push_back(data_line);
+    if (i == 2)
+    {
+      clear_3d = false;
+    }
+  }
+  return;
+}
+
+void clearCloud()
+{
+  std::cout << "start clear points, the cloudMap.size(): "<< cloudMap.size()<<std::endl;
+    for(pcl::PointCloud<pcl::PointXYZ>::iterator it = cloudMap.begin();
+            it != cloudMap.end();)
+    {
+       Eigen::Vector3d pt(it->x, it->y, it->z);
+      bool remove = false;
+        if (clear_3d)
+        {
+          for (int j = 0; j < clear_pos.size(); j++)
+          {
+            if ((pt - clear_pos[j]).norm() < 2.0)
+            {
+              remove = true;
+              break;
+            }
+          }
+        }else
+        {
+          for (int j = 0; j < clear_pos.size(); j++)
+          {
+            if ((pt.head(2) - clear_pos[j].head(2)).norm() < 2.0)
+            {
+              remove = true;
+              it = cloudMap.erase(it);
+              break;
+            }
+          }
+        }
+
+        if(remove)
+            it = cloudMap.erase(it);
+        else
+            ++it;
+    }
+
+  std::cout << "cloudMap.size(): "<< cloudMap.size()<<std::endl;
+  return;
+}
+
+
 
 void pubSensedPoints() {
+
+  // get map
+  _struct_map_gen.getPC(cloudMap);
+
+  // filter map
+  if (_clear_pos)
+  {
+    clearCloud();
+  }
   pcl::toROSMsg(cloudMap, globalMap_pcd);
   globalMap_pcd.header.frame_id = _frame_id;
   _all_map_cloud_pub.publish(globalMap_pcd);
-
   if (_save_map) {
     pcl::io::savePCDFileASCII(_dataset_path + std::string("pt") +
                                   std::to_string(_initial_num + _num) +
                                   std::string(".pcd"),
                               cloudMap);
   }
-
   return;
 }
 
@@ -67,9 +148,7 @@ void resCallback(const std_msgs::Float32& msg) {
 
     _struct_map_gen.changeRes(_grid_mpa.resolution_);
     _struct_map_gen.resetMap();
-    _struct_map_gen.getPC(cloudMap);
-    std::cout << "cloudMap.size() " << cloudMap.size()  << std::endl;
-    
+
     pubSensedPoints();
   }
   else
@@ -84,7 +163,6 @@ void genMapCallback(const std_msgs::Bool& msg) {
   _seed += 1.0;
   _struct_map_gen.clear();
   _struct_map_gen.change_ratios(_seed);
-  _struct_map_gen.getPC(cloudMap);
   _num += 1;
 
   pubSensedPoints();
@@ -126,7 +204,6 @@ int main(int argc, char** argv) {
   nh.param("params/w1", _map_gen_pa.w1_, 0.3);
   nh.param("params/w2", _map_gen_pa.w2_, 1.0);
   nh.param("params/w3", _map_gen_pa.w3_, 2.0);
-  nh.param("params/w4", _map_gen_pa.w4_, 3.0);
   nh.param("params/add_noise", _map_gen_pa.add_noise_, false);
   nh.param("params/seed", _seed, 1.0);
 
@@ -134,6 +211,10 @@ int main(int argc, char** argv) {
   nh.param("dataset/samples_num", _samples_on_map, 0);
   nh.param("dataset/start_index", _initial_num, 0);
   nh.param("dataset/path", _dataset_path, std::string("path"));
+
+  nh.param("clear_path", _clear_path, string("pos.csv"));
+  nh.param("clear_pos", _clear_pos, false);
+  readClearPos();
 
   // origin mapsize resolution isrequired
   ros::Rate loop_rate(5.0);
@@ -143,11 +224,9 @@ int main(int argc, char** argv) {
     system(cmd.c_str());
   }
 
-  ros::Duration(5.0).sleep();
-
+  ros::Duration(1.0).sleep();
   _struct_map_gen.initParams(_grid_mpa);
   _struct_map_gen.randomUniMapGen(_map_gen_pa, _seed);
-  _struct_map_gen.getPC(cloudMap);
   _num += 1;
   pubSensedPoints();
   loop_rate.sleep();
@@ -157,7 +236,7 @@ int main(int argc, char** argv) {
       _seed += 1.0;
       _struct_map_gen.clear();
       _struct_map_gen.change_ratios(_seed);
-      _struct_map_gen.getPC(cloudMap);
+  
       _num += 1;
       pubSensedPoints();
     }

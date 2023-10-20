@@ -24,7 +24,7 @@
 #include <vicon_env/SemanticArray.h>
 #include <vicon_env/Circle.h>
 
-#include <visualization_msgs/MarkerArray.h>
+
 
 
 using namespace std;

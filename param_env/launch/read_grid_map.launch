@@ -9,8 +9,8 @@
   <arg name="map_z_origin" default="-0.1"/>
 
   <arg name="cloud" default="/read_grid_map/global_gridmap"/>
+  <arg name="clear_path"  default="$(find param_env)/clear_pos/clear_3d.csv"  />
   
-
   <node pkg ="param_env" name ="read_grid_map" type ="read_grid_map" output = "screen">    
     <!-- this is the map init position, not the odom-->
     <remap from="~global_gridmap" to="$(arg cloud)"/>
@@ -25,6 +25,9 @@
     <param name="map/resolution"    value="0.1"/>        
     <param name="map/frame_id"      value="$(arg map_frame_id)" />
     <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
+
+    <param name="clear_path" value="$(arg clear_path)"/>
+
 
     <!-- randomly change the map without trigger -->
     <param name="map/auto_change"    value="false"/>

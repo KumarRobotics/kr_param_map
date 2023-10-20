@@ -351,7 +351,10 @@ namespace param_env
       R_ << cos(theta), -sin(theta), 0.0,
             sin(theta), cos(theta), 0.0,
             0, 0, 1;
-      bd_ << rect(0) + rect(1), rect(0) + rect(1), rect(2);
+
+      auto pt = R_ * rect_;
+
+      bd_ << rect(0) + abs(pt(0)),  rect(0) + abs(pt(1)), rect(2);
     }
 
     ~CircleGate() {}
@@ -393,6 +396,22 @@ namespace param_env
       cpt = cpt_;
     }
 
+    void getWidth(double &width)
+    {
+      width = rect_(0);
+    }
+
+    void getRect(Eigen::Vector3d &rect)
+    {
+      rect = rect_;
+    }
+
+    void getRot(Eigen::Matrix3d &R)
+    {
+      R = R_;
+    }
+
+
   };
   class RectGate
   {
@@ -400,7 +419,7 @@ namespace param_env
 
     double theta_;
     Eigen::Vector3d cpt_;
-    Eigen::Vector3d rect_; //width, l1, l2
+    Eigen::Vector3d rect_; // width, l1, l2 all half length
     Eigen::Matrix3d R_;
     Eigen::Vector3d bd_; // the bounding as -+ d
 
@@ -418,7 +437,11 @@ namespace param_env
             sin(theta), cos(theta), 0.0,
             0, 0, 1;
 
-      bd_ << rect(0) + rect(1), rect(0) + rect(1), rect(2);
+      auto pt = R_.transpose() * rect_;
+
+      // bd_ << rect(0) + abs(pt(0)),  rect(0) + abs(pt(1)), rect(2);
+      bd_ << rect(1), rect(1), rect(2);
+
     }
 
     ~RectGate() {}
@@ -453,6 +476,21 @@ namespace param_env
     void getCenter(Eigen::Vector3d &cpt)
     {
       cpt = cpt_;
+    }
+
+    void getWidth(double &width)
+    {
+      width = rect_(0);
+    }
+
+    void getRect(Eigen::Vector3d &rect)
+    {
+      rect = rect_;
+    }
+
+    void getRot(Eigen::Matrix3d &R)
+    {
+      R = R_;
     }
 
   };

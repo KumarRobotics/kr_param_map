@@ -42,26 +42,26 @@ generate_messages(
 
 
 catkin_package(
-  CATKIN_DEPENDS
-  message_runtime
-  DEPENDS param_env
+  CATKIN_DEPENDS message_runtime
+  DEPENDS
   )
   
 include_directories(
-  SYSTEM
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}
 )
 
-
-
-add_executable (vicon_map2d src/vicon_map2d.cpp)
+add_executable (vicon_map2d src/vicon_map2d.cpp )
 target_link_libraries(vicon_map2d
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}) 
+add_dependencies(vicon_map2d 
+  ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
-add_executable (vicon_map3d src/vicon_map3d.cpp)
+add_executable (vicon_map3d src/vicon_map3d.cpp )
 target_link_libraries(vicon_map3d
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}) 
+add_dependencies(vicon_map3d 
+   ${${PROJECT_NAME}_EXPORTED_TARGETS})

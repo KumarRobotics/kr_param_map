@@ -10,15 +10,18 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+
   <depend>rosbag</depend>
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
 
-  <depend>message_generation</depend>
-  <depend>message_runtime</depend>
   
-  <depend>param_env</depend>
-  <depend>kr_planning_msgs</depend>
 
+  <build_depend>param_env</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>message_runtime</build_depend>
 
+  <exec_depend>message_runtime</exec_depend>
+
+  
 </package>

@@ -1,20 +1,22 @@
 #ifndef STRUCT_MAP_GEN_HPP
 #define STRUCT_MAP_GEN_HPP
 
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <iostream>
+#include <iomanip>
+#include <visualization_msgs/MarkerArray.h>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Vector3.h>
 #include <math.h>
 #include <nav_msgs/Odometry.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Float32.h>
-#include <visualization_msgs/MarkerArray.h>
-
+#include <iterator>
 #include <Eigen/Eigen>
 #include <iomanip>
 #include <iostream>
@@ -47,10 +49,10 @@ class StructMapGenerator {
   uniform_real_distribution<double> rand_theta, rand_ratio_base,
       rand_ratio_base2, rand_h, rand_cw;
 
- public:
-  StructMapGenerator() = default;
+  public:
 
-  ~StructMapGenerator() {}
+    StructMapGenerator() = default;
+    ~StructMapGenerator() {}
 
   void getGridMap(param_env::GridMap& grid_map) { grid_map = grid_map_; }
 
@@ -125,6 +127,94 @@ class StructMapGenerator {
     return cur_grids;
   }
 
+
+
+  template<class T>
+  int updatePtsLight(T &geo_rep)
+  {
+    //count time
+    clock_t start, end;
+    start = clock();
+    int cur_grids = 0;
+    Eigen::Vector3d rect, cpt, ob_pt;
+    geo_rep.getRect(rect); //width l1 l2
+    geo_rep.getCenter(cpt);
+    Eigen::Matrix3d rot;
+    geo_rep.getRot(rot);
+
+    int widNum1 = ceil(rect(1) / mpa_.resolution_);
+    int widNum2 = ceil(rect(2) / mpa_.resolution_);
+    int width   = ceil(rect(0) / mpa_.resolution_);
+    std::vector<Eigen::Vector3d> total_pts;
+    Eigen::MatrixXd signs(2, 4);
+    signs <<  1, -1, 1, -1,
+              1, 1, -1, -1;
+    for (int t = - width; t < width; t++)
+      for (int r = 0 ; r < widNum1; r++)
+        for (int s = 0; s < widNum2; s++)
+        {
+          for (int i = 0; i < 4; i++)
+          {
+            
+            ob_pt = cpt + rot * Eigen::Vector3d(t * mpa_.resolution_,
+                                          r * signs(0, i) * mpa_.resolution_,
+                                          s * signs(1, i) * mpa_.resolution_);
+
+            if (!geo_rep.isInside(ob_pt))
+            {
+              continue;
+            }
+            if (grid_map_.isOcc(ob_pt) != 0)
+            {
+              continue;
+            }
+            grid_map_.setOcc(ob_pt);
+            pcl::PointXYZ pt_random;
+            pt_random.x = ob_pt(0);
+            pt_random.y = ob_pt(1);
+            pt_random.z = ob_pt(2);
+
+            cloudMap_.points.push_back(pt_random);
+            cur_grids += 1;
+            total_pts.push_back(ob_pt);
+            
+
+          }
+        }       
+
+
+    if (mgpa_.add_noise_)
+    {
+      // add randorm noise
+      std::normal_distribution<double> dist(0.0, mgpa_.w1_);
+        
+      for (auto ob_pt: total_pts)
+      {
+        double ran = (float) rand()/RAND_MAX; 
+        if (ran < mgpa_.w1_)
+        {
+          ob_pt(0) = ob_pt(0) + dist(eng);
+          ob_pt(1) = ob_pt(1) + dist(eng);
+          ob_pt(2) = ob_pt(2) + dist(eng);
+          if (!grid_map_.isInMap(ob_pt))
+          {
+            continue;
+          }
+          grid_map_.setOcc(ob_pt);
+          pcl::PointXYZ pt_random;
+          pt_random.x = ob_pt(0);
+          pt_random.y = ob_pt(1);
+          pt_random.z = ob_pt(2);
+          cloudMap_.points.push_back(pt_random);
+        }
+      }
+
+    }
+    end = clock();
+    //the time is
+    return cur_grids;
+  }
+
   template <class T>
   void traversePts(std::vector<T>& geo_reps) {
     for (auto& geo_rep : geo_reps) {
@@ -193,6 +283,7 @@ class StructMapGenerator {
     traversePts(rect_gate);
   }
 
+
   void change_ratios(int& seed) {
     eng.seed(seed);
     mgpa_.w1_ = rand_ratio_base(eng);
@@ -214,8 +305,8 @@ class StructMapGenerator {
       }
     }
     mgpa_.cylinder_ratio_ = ratio_vec(0);
-    mgpa_.circle_ratio_ = ratio_vec(1);
-    mgpa_.gate_ratio_ = ratio_vec(2);
+    mgpa_.circle_ratio_ = 0.1 * ratio_vec(1);
+    mgpa_.gate_ratio_ = 0.1 * ratio_vec(2);
     mgpa_.ellip_ratio_ = ratio_vec(3);
     mgpa_.poly_ratio_ = ratio_vec(4);
 
@@ -236,7 +327,7 @@ class StructMapGenerator {
     grid_map_.setUniRand(eng);
 
     rand_cw = uniform_real_distribution<double>(
-        0, mgpa_.w1_ * mpa_.basic_mp_.map_size_(2));
+        0.1, mgpa_.w1_ * mpa_.basic_mp_.map_size_(2));
 
     int all_grids =
         ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));
@@ -278,7 +369,7 @@ class StructMapGenerator {
 
       param_env::CircleGate cir_gate(cpt, bound, theta);
 
-      cur_grids += updatePts(cir_gate);
+      cur_grids += updatePtsLight(cir_gate);
       geo_map_.add(cir_gate);
     }
     circle_grids = cur_grids;
@@ -295,7 +386,7 @@ class StructMapGenerator {
 
       param_env::RectGate rect_gate(cpt, bound, theta);
 
-      cur_grids += updatePts(rect_gate);
+      cur_grids += updatePtsLight(rect_gate);
       geo_map_.add(rect_gate);
     }
     gate_grids = cur_grids;

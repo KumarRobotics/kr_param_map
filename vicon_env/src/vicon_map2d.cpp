@@ -16,7 +16,7 @@
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <visualization_msgs/MarkerArray.h>
+
 #include <Eigen/Eigen>
 #include <random>
 

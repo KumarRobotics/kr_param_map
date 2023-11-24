@@ -46,6 +46,10 @@ double _seed;  // random seed
 bool clear_3d = true, _clear_pos = false;
 std::vector<Eigen::Vector3d> clear_pos;
 
+// dyn part
+double dt = 0.5;
+bool dyn_mode = true;
+
 void readClearPos()
 {
   std::ifstream fp(_clear_path);
@@ -97,7 +101,7 @@ void clearCloud()
             if ((pt.head(2) - clear_pos[j].head(2)).norm() < 2.0)
             {
               remove = true;
-              it = cloudMap.erase(it);
+              //it = cloudMap.erase(it);   // erase twice, will cause it out of range
               break;
             }
           }
@@ -137,6 +141,9 @@ void pubSensedPoints() {
   return;
 }
 
+
+
+
 void resCallback(const std_msgs::Float32& msg) {
 
   float res = msg.data;
@@ -150,6 +157,7 @@ void resCallback(const std_msgs::Float32& msg) {
     _struct_map_gen.resetMap();
 
     pubSensedPoints();
+
   }
   else
   {
@@ -162,7 +170,7 @@ void resCallback(const std_msgs::Float32& msg) {
 void genMapCallback(const std_msgs::Bool& msg) {
   _seed += 1.0;
   _struct_map_gen.clear();
-  _struct_map_gen.change_ratios(_seed);
+  _struct_map_gen.change_ratios(_seed, false, dt);
   _num += 1;
 
   pubSensedPoints();
@@ -214,10 +222,19 @@ int main(int argc, char** argv) {
 
   nh.param("clear_path", _clear_path, string("pos.csv"));
   nh.param("clear_pos", _clear_pos, false);
-  readClearPos();
+
+
+  // dynamic movement with constant velocity 
+  nh.param("dyn/v_x_h", _struct_map_gen.vel_h(0), 0.1);
+  nh.param("dyn/v_y_h", _struct_map_gen.vel_h(1), 0.1);
+  nh.param("dyn/v_z_h", _struct_map_gen.vel_h(2), 0.0);
+  nh.param("dyn/dt", dt, 10.0);
+  nh.param("dyn/dyn_mode", dyn_mode, true);
+
+  if(!dyn_mode) readClearPos();
 
   // origin mapsize resolution isrequired
-  ros::Rate loop_rate(5.0);
+  ros::Rate loop_rate(dt);
 
   if (opendir(_dataset_path.c_str()) == NULL) {
     string cmd = "mkdir -p " + _dataset_path;
@@ -226,18 +243,27 @@ int main(int argc, char** argv) {
 
   ros::Duration(1.0).sleep();
   _struct_map_gen.initParams(_grid_mpa);
-  _struct_map_gen.randomUniMapGen(_map_gen_pa, _seed);
+  _struct_map_gen.randomUniMapGen(_map_gen_pa, _seed, dyn_mode);  // generate the initial obs
   _num += 1;
   pubSensedPoints();
   loop_rate.sleep();
+  param_env::StructMapGenerator temp;
 
   while (ros::ok()) {
-    if (_auto_gen && _num < _samples_on_map) {
-      _seed += 1.0;
+    // random map gen
+    if(!dyn_mode){
+      if (_auto_gen && _num < _samples_on_map) {
+        _seed += 1.0;
+        _struct_map_gen.clear();
+        _struct_map_gen.change_ratios(_seed, false, dt);
+    
+        _num += 1;
+        pubSensedPoints();
+      }
+    }
+    else{ //dynamic obs:
       _struct_map_gen.clear();
-      _struct_map_gen.change_ratios(_seed);
-  
-      _num += 1;
+      _struct_map_gen.dyn_generate(1/dt);
       pubSensedPoints();
     }
     ros::spinOnce();

@@ -46,6 +46,7 @@ target_link_libraries(read_grid_map
   ${SDL_LIBRARY}
   ${SDL_IMAGE_LIBRARIES})
 
+
 add_dependencies(read_grid_map ${catkin_EXPORTED_TARGETS})
 
   

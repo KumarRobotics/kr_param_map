@@ -25,6 +25,7 @@
 #include <map_utils/grid_map.hpp>
 #include <map_utils/map_basics.hpp>
 #include <random>
+#include <pcl/common/transforms.h>
 
 namespace param_env {
 
@@ -49,9 +50,16 @@ namespace param_env {
     param_env::MapGenParams mgpa_;
 
     default_random_engine eng;
-    uniform_real_distribution<double> rand_theta, rand_w, rand_h, rand_cw, rand_radiu;
+    uniform_real_distribution<double> rand_theta, rand_w, rand_h, rand_cw, rand_radiu, rand_vx, rand_vy, rand_vz;
+
+    // dyn param
+    std::vector<param_env::Cylinder> cyl_list; std::vector<param_env::CircleGate>  cir_list;
+    std::vector<param_env::RectGate>  gate_list; std::vector<param_env::Ellipsoid>  ellip_list;
+    std::vector<param_env::Polyhedron> poly_list; 
 
   public:
+
+    Eigen::Vector3d vel, vel_l, vel_h;
 
     StructMapGenerator() = default;
     ~StructMapGenerator() {}
@@ -101,6 +109,8 @@ namespace param_env {
             cloudMap_.points.push_back(pt_random);
             cur_grids += 1;
             total_pts.push_back(ob_pt);
+
+            geo_rep.cloud->push_back(pt_random); // get cloud at 1st iter
           }
 
       if (mgpa_.add_noise_)
@@ -125,11 +135,12 @@ namespace param_env {
             grid_map_.setOcc(ob_pt);
             pcl::PointXYZ pt_random;
             
-
             pt_random.x = ob_pt(0);
             pt_random.y = ob_pt(1);
             pt_random.z = ob_pt(2);
             cloudMap_.points.push_back(pt_random);
+
+            geo_rep.cloud->push_back(pt_random); // get cloud at 1st iter
           }
         }
 
@@ -182,11 +193,9 @@ namespace param_env {
               cloudMap_.points.push_back(pt_random);
               cur_grids += 1;
               total_pts.push_back(ob_pt);
-              
 
+              geo_rep.cloud->push_back(pt_random); // get cloud at 1st iter
             }
-
-
           }       
   
 
@@ -213,11 +222,12 @@ namespace param_env {
             pt_random.y = ob_pt(1);
             pt_random.z = ob_pt(2);
             cloudMap_.points.push_back(pt_random);
+
+            geo_rep.cloud->push_back(pt_random); // get cloud at 1st iter
           }
         }
 
       }
-
       return cur_grids;
     }
 
@@ -267,12 +277,11 @@ namespace param_env {
     }
 
     void clear(){
-
       cloudMap_.clear();
       grid_map_.clearAllOcc();
       geo_map_.clearAll();
-
     }
+
     //it should be called after the random map gene
     void resetMap()
     {
@@ -298,8 +307,13 @@ namespace param_env {
       traversePts(rect_gate);
     }
     
-    void change_ratios(double &seed)
+    void change_ratios(double &seed, bool if_dyn, float dt)
     {
+      if(if_dyn) {  // dynamic update
+        dyn_generate(dt);
+        return;
+      }
+
       eng.seed(seed);
 
       mgpa_.cylinder_ratio_ = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
@@ -308,10 +322,10 @@ namespace param_env {
       mgpa_.ellip_ratio_    = 0.5  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
       mgpa_.poly_ratio_     = 0.5  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
 
-      generate();
+      generate(if_dyn); // false
     }
 
-    void randomUniMapGen(param_env::MapGenParams &mgpa, double &seed)
+    void randomUniMapGen(param_env::MapGenParams &mgpa, double &seed, bool if_dyn)
     {
 
       mgpa_ = mgpa;
@@ -320,15 +334,18 @@ namespace param_env {
       rand_radiu = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w3_);
       rand_h     = uniform_real_distribution<double>(mgpa_.w2_, mpa_.basic_mp_.map_size_(2));
       eng.seed(seed);
-      generate();
-
+      generate(if_dyn);
     }
 
-    void generate()
+    void generate(bool dyn_mode)
     {
-      //count computation time
-      // clock_t start, end;
-      // start = clock();
+      // rand vel for each obs
+      if(dyn_mode){
+        rand_vx = uniform_real_distribution<double>(-vel_h(0), vel_h(0));
+        rand_vy = uniform_real_distribution<double>(-vel_h(1), vel_h(1));
+        rand_vz = uniform_real_distribution<double>(-vel_h(2), vel_h(2));
+      }
+
       grid_map_.setUniRand(eng);
 
       int all_grids = ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));
@@ -350,12 +367,16 @@ namespace param_env {
        
         h = rand_h(eng);
         w = 0.2 + rand_w(eng);
-
         param_env::Cylinder cylinder(cpt, w, h);
 
-        cur_grids += updatePts(cylinder);
+        vel(0) = rand_vx(eng); vel(1) = rand_vy(eng); vel(2) = 0;
+        cylinder.setVel(vel);
+        cur_grids += updatePts(cylinder); // update pcl
         geo_map_.add(cylinder);
 
+        if(dyn_mode){
+          cyl_list.push_back(cylinder);  // add dyn_obs_list
+        }
       }
       cylinder_grids = cur_grids;
 
@@ -370,8 +391,14 @@ namespace param_env {
         bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
         param_env::CircleGate cir_gate(cpt, bound, theta);
 
+        vel(0) = rand_vx(eng); vel(1) = rand_vy(eng); vel(2) = 0;
+        cir_gate.setVel(vel);
         cur_grids += updatePtsLight(cir_gate);
         geo_map_.add(cir_gate);
+
+        if(dyn_mode){
+          cir_list.push_back(cir_gate); // add dyn_obs_list
+        }
       }
       circle_grids = cur_grids;
 
@@ -385,8 +412,15 @@ namespace param_env {
         double width = 0.1 + 0.2 * rand_radiu(eng);
         bound << width, width + rand_radiu(eng), width + rand_radiu(eng);
         param_env::RectGate rect_gate(cpt, bound, theta);
+
+        vel(0) = rand_vx(eng); vel(1) = rand_vy(eng); vel(2) = 0;
+        rect_gate.setVel(vel);
         cur_grids += updatePtsLight(rect_gate);
         geo_map_.add(rect_gate);
+
+        if(dyn_mode){
+          gate_list.push_back(rect_gate); // add dyn_obs_list
+        }
       }
       gate_grids = cur_grids;
 
@@ -401,8 +435,14 @@ namespace param_env {
         bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
         param_env::Ellipsoid ellip;
         ellip.init(cpt, bound, euler_angle);
+
+        vel(0) = rand_vx(eng); vel(1) = rand_vy(eng); vel(2) = 0;
+        ellip.setVel(vel);
         cur_grids += updatePts(ellip);
         geo_map_.add(ellip);
+        if(dyn_mode){
+          ellip_list.push_back(ellip); // add dyn_obs_list
+        }
       }
       ellip_grids = cur_grids;
 
@@ -415,15 +455,17 @@ namespace param_env {
         bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
         param_env::Polyhedron poly;
         poly.randomInit(cpt, bound);
-        cur_grids += updatePts(poly);
+
+        vel(0) = rand_vx(eng); vel(1) = rand_vy(eng); vel(2) = 0;
+        poly.setVel(vel);
+        cur_grids += updatePts(poly); 
         geo_map_.add(poly);
+        if(dyn_mode){
+          poly_list.push_back(poly); // add dyn_obs_list
+        }      
       }
       poly_grids = cur_grids;
 
-      // end = clock();
-      // std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
-      // //the time is
-      // std::cout << "+++ The time for generating map is: " << (double)(end - start) / CLOCKS_PER_SEC << "s +++" << std::endl;
 
       std::cout << setiosflags(ios::fixed) << setprecision(2) << std::endl;
       std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
@@ -438,6 +480,214 @@ namespace param_env {
     }
 
 
+
+    // for obs pointclouds transform
+    template<class T>
+    void move_clouds(T & geo_rep, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr_out, Eigen::Vector3d & dist){
+      Eigen::Affine3f transform = Eigen::Affine3f::Identity();
+      transform.translation() << dist(0), dist(1), dist(2);
+      transform.rotate(Eigen::Quaternionf::Identity());
+      pcl::transformPointCloud(*(geo_rep.cloud), *cloud_ptr_out, transform);
+    }
+
+
+    // update grid map
+    void pcl2grid(){
+      Eigen::Vector3d pt = Eigen::Vector3d::Zero(3,1);
+      int count = 0;
+      for (auto ob_pt: cloudMap_.points)
+        {
+          pt(0) = ob_pt.x; pt(1) = ob_pt.y; pt(2) = ob_pt.z;
+          if (!grid_map_.isInMap(pt))
+          {
+            continue;
+          }
+          grid_map_.setOcc(pt);
+          count++;
+        }
+      ROS_WARN("GRID OBS: %d", count);
+    }
+
+
+    // for dyn movement update
+    void dyn_generate(double dt)
+    {
+      double x_l = -10; double y_l = -10; double z_l = 0; // range
+      double x_h = 10; double y_h = 10; double z_h = 5;
+      Eigen::Vector3d cur_cpt = Eigen::Vector3d::Zero(3,1); 
+      Eigen::Vector3d next_cpt = Eigen::Vector3d::Zero(3,1); 
+      Eigen::Vector3d vel = Eigen::Vector3d::Zero(3,1);
+      Eigen::Vector3d dist = Eigen::Vector3d::Zero(3,1);
+      
+      for(auto & c  : cir_list){
+        c.getCenter(cur_cpt);
+        c.getVel(vel);
+        next_cpt(0) = cur_cpt(0) + dt * vel(0);
+        next_cpt(1) = cur_cpt(1) + dt * vel(1);
+        next_cpt(2) = cur_cpt(2);
+
+        if(next_cpt(0) < x_l){
+          next_cpt(0) = x_l;  vel(0) *= -1;
+        }
+        if(next_cpt(0) > x_h){
+          next_cpt(0) = x_h;  vel(0) *= -1;
+        }
+        if(next_cpt(1) < y_l){
+          next_cpt(1) = y_l;  vel(1) *= -1;
+        }
+        if(next_cpt(1) > y_h){
+          next_cpt(1) = y_h;  vel(1) *= -1;
+        }
+        if(next_cpt(2) < z_l){
+          next_cpt(2) = z_l;  vel(2) *= -1;
+        }
+        if(next_cpt(2) > z_h){
+          next_cpt(2) = z_h;  vel(2) *= -1;
+        }
+        c.setCenter(next_cpt);
+        c.setVel(vel);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
+        dist = next_cpt - cur_cpt;
+        move_clouds(c, cloud_obs, dist);
+        *(c.cloud) = *cloud_obs;
+        cloudMap_ += *cloud_obs;
+      }
+
+
+      for(auto & c  : ellip_list){
+        c.getCenter(cur_cpt);
+        c.getVel(vel);
+        next_cpt(0) = cur_cpt(0) + dt * vel(0);
+        next_cpt(1) = cur_cpt(1) + dt * vel(1);
+        next_cpt(2) = cur_cpt(2);
+        if(next_cpt(0) < x_l){
+          next_cpt(0) = x_l;  vel(0) *= -1;
+        }
+        if(next_cpt(0) > x_h){
+          next_cpt(0) = x_h;  vel(0) *= -1;
+        }
+        if(next_cpt(1) < y_l){
+          next_cpt(1) = y_l;  vel(1) *= -1;
+        }
+        if(next_cpt(1) > y_h){
+          next_cpt(1) = y_h;  vel(1) *= -1;
+        }
+        if(next_cpt(2) < z_l){
+          next_cpt(2) = z_l;  vel(2) *= -1;
+        }
+        if(next_cpt(2) > z_h){
+          next_cpt(2) = z_h;  vel(2) *= -1;
+        }
+        c.setCenter(next_cpt);
+        c.setVel(vel);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
+        dist = next_cpt - cur_cpt;
+        move_clouds(c, cloud_obs, dist);
+        *(c.cloud) = *cloud_obs;  // update pcl
+        cloudMap_ += *cloud_obs;  // add pcl
+      }
+
+      for(auto & c  : cyl_list){
+        
+        c.getCenter(cur_cpt);
+        c.getVel(vel);
+        next_cpt(0) = cur_cpt(0) + dt * vel(0);
+        next_cpt(1) = cur_cpt(1) + dt * vel(1);
+        next_cpt(2) = cur_cpt(2);
+        if(next_cpt(0) < x_l){
+          next_cpt(0) = x_l;  vel(0) *= -1;
+        }
+        if(next_cpt(0) > x_h){
+          next_cpt(0) = x_h;  vel(0) *= -1;
+        }
+        if(next_cpt(1) < y_l){
+          next_cpt(1) = y_l;  vel(1) *= -1;
+        }
+        if(next_cpt(1) > y_h){
+          next_cpt(1) = y_h;  vel(1) *= -1;
+        }
+        if(next_cpt(2) < z_l){
+          next_cpt(2) = z_l;  vel(2) *= -1;
+        }
+        if(next_cpt(2) > z_h){
+          next_cpt(2) = z_h;  vel(2) *= -1;
+        }
+        c.setCenter(next_cpt);
+        c.setVel(vel);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
+        dist = next_cpt - cur_cpt;
+        move_clouds(c, cloud_obs, dist);
+        *(c.cloud) = *cloud_obs;
+        cloudMap_ += *cloud_obs;
+      }
+
+      for(auto & c  : poly_list){
+        c.getCenter(cur_cpt);
+        c.getVel(vel);
+        next_cpt(0) = cur_cpt(0) + dt * vel(0);
+        next_cpt(1) = cur_cpt(1) + dt * vel(1);
+        next_cpt(2) = cur_cpt(2);
+        if(next_cpt(0) < x_l){
+          next_cpt(0) = x_l;  vel(0) *= -1;
+        }
+        if(next_cpt(0) > x_h){
+          next_cpt(0) = x_h;  vel(0) *= -1;
+        }
+        if(next_cpt(1) < y_l){
+          next_cpt(1) = y_l;  vel(1) *= -1;
+        }
+        if(next_cpt(1) > y_h){
+          next_cpt(1) = y_h;  vel(1) *= -1;
+        }
+        if(next_cpt(2) < z_l){
+          next_cpt(2) = z_l;  vel(2) *= -1;
+        }
+        if(next_cpt(2) > z_h){
+          next_cpt(2) = z_h;  vel(2) *= -1;
+        }
+        c.setCenter(next_cpt);
+        c.setVel(vel);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
+        dist = next_cpt - cur_cpt;
+        move_clouds(c, cloud_obs, dist);
+        *(c.cloud) = *cloud_obs;
+        cloudMap_ += *cloud_obs;
+      }
+
+      for(auto & c  : gate_list){
+        c.getCenter(cur_cpt);
+        c.getVel(vel);
+        next_cpt(0) = cur_cpt(0) + dt * vel(0);
+        next_cpt(1) = cur_cpt(1) + dt * vel(1);
+        next_cpt(2) = cur_cpt(2);
+        if(next_cpt(0) < x_l){
+          next_cpt(0) = x_l;  vel(0) *= -1;
+        }
+        if(next_cpt(0) > x_h){
+          next_cpt(0) = x_h;  vel(0) *= -1;
+        }
+        if(next_cpt(1) < y_l){
+          next_cpt(1) = y_l;  vel(1) *= -1;
+        }
+        if(next_cpt(1) > y_h){
+          next_cpt(1) = y_h;  vel(1) *= -1;
+        }
+        if(next_cpt(2) < z_l){
+          next_cpt(2) = z_l;  vel(2) *= -1;
+        }
+        if(next_cpt(2) > z_h){
+          next_cpt(2) = z_h;  vel(2) *= -1;
+        }
+        c.setCenter(next_cpt);
+        c.setVel(vel);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
+        dist = next_cpt - cur_cpt;
+        move_clouds(c, cloud_obs, dist);
+        *(c.cloud) = *cloud_obs;
+        cloudMap_ += *cloud_obs;
+      }
+      pcl2grid();  // update grid obs
+    }
   };
 
 }

@@ -23,7 +23,7 @@
     <param name="map/y_origin"   value="$(arg map_y_origin)"/>
     <param name="map/z_origin"   value="$(arg map_z_origin)"/>
 
-    <param name="map/resolution" value="0.1"/>        
+    <param name="map/resolution" value="0.2"/>        
     <param name="map/frame_id"     value="$(arg map_frame_id)" />
     <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
     
@@ -34,11 +34,11 @@
     <param name="map/auto_change"    value="true"/>
 
     <!-- total obstacle ratios -->
-    <param name="params/cylinder_ratio" value="0.02" type="double"/>
-    <param name="params/circle_ratio"   value="0.002" type="double"/> <!-- 0.1 x others -->
-    <param name="params/gate_ratio"     value="0.002" type="double"/> <!-- 0.1 x others -->
-    <param name="params/ellip_ratio"    value="0.02" type="double"/>
-    <param name="params/poly_ratio"     value="0.02" type="double"/>
+    <param name="params/cylinder_ratio" value="0.0" type="double"/>
+    <param name="params/circle_ratio"   value="0.01" type="double"/> <!-- 0.1 x others -->
+    <param name="params/gate_ratio"     value="0.0" type="double"/> <!-- 0.1 x others -->
+    <param name="params/ellip_ratio"    value="0.0" type="double"/>
+    <param name="params/poly_ratio"     value="0.01" type="double"/>
 
     <param name="params/w1" value="0.1"/>
     <param name="params/w2" value="0.6"/>          
@@ -53,6 +53,13 @@
     <param name="dataset/samples_num" value="100"/>
     <param name="dataset/start_index" value="5080900"/>
     <param name="dataset/path"        value="$(find param_env)/dataset/"/>
+
+    <!--dynamic obs param-->
+    <param name="dyn/v_x_h"    value="1"/>
+    <param name="dyn/v_y_h" value="1"/>
+    <param name="dyn/v_z_h" value="0.0"/>
+    <param name="dyn/dt"        value="10"/>
+    <param name="dyn/dyn_mode"        value="true"/>
 
   </node>
 

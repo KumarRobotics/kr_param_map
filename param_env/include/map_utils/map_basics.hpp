@@ -114,7 +114,12 @@ namespace param_env
     Eigen::Vector3d bd_; // the bounding as -+ d
     Eigen::Vector3d cpt_;
 
+    //params for dyn
+    Eigen::Vector3d v;
+
   public:
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 
     Polyhedron() {}
 
@@ -207,6 +212,7 @@ namespace param_env
       bd_  = bound;
       cpt_ = cpt;
 
+      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
     void getBd(Eigen::Vector3d &bd)
@@ -217,6 +223,22 @@ namespace param_env
     void getCenter(Eigen::Vector3d &cpt)
     {
       cpt = cpt_;
+    }
+
+    // for dyn
+    void setCenter(Eigen::Vector3d &cpt_set)
+    {
+      cpt_ = cpt_set;
+    }
+
+    void getVel(Eigen::Vector3d &vel)
+    {
+      vel = v;
+    }
+
+    void setVel(Eigen::Vector3d &vel_set)
+    {
+      v = vel_set;
     }
 
 
@@ -233,12 +255,18 @@ namespace param_env
     double h_;
     Eigen::Vector3d bd_; // the bounding as -+ d
 
+    //params for dyn
+    Eigen::Vector3d v;
+
   public:
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 
     Cylinder() = default;
     
     Cylinder(const Eigen::Vector3d &cpt, double &r, double &h) : cpt_(cpt), r_(r), h_(h) {
       bd_ << r, r, h;
+
+      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
     ~Cylinder() {}
@@ -268,6 +296,22 @@ namespace param_env
       cpt = cpt_;
     }
 
+    // for dyn
+    void setCenter(Eigen::Vector3d &cpt_set)
+    {
+      cpt_ = cpt_set;
+    }
+
+    void getVel(Eigen::Vector3d &vel)
+    {
+      vel = v;
+    }
+
+    void setVel(Eigen::Vector3d &vel_set)
+    {
+      v = vel_set;
+    }
+
   };
 
   class Ellipsoid
@@ -278,8 +322,11 @@ namespace param_env
     Eigen::Vector3d d_;
     Eigen::Vector3d bd_; // the bounding as -+ d
 
-  public:
+    //params for dyn
+    Eigen::Vector3d v;
 
+  public:
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
     Ellipsoid() = default;
     
     Ellipsoid(const Eigen::Matrix3d &E, Eigen::Vector3d d) : E_(E), d_(d) {}
@@ -310,6 +357,7 @@ namespace param_env
       d_  = cpt;
       bd_ = bound;
 
+      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
 
@@ -322,6 +370,22 @@ namespace param_env
     void getCenter(Eigen::Vector3d &cpt)
     {
       cpt = d_;
+    }
+
+    // for dyn
+    void setCenter(Eigen::Vector3d &cpt_set)
+    {
+      d_ = cpt_set;
+    }
+
+    void getVel(Eigen::Vector3d &vel)
+    {
+      vel = v;
+    }
+
+    void setVel(Eigen::Vector3d &vel_set)
+    {
+      v = vel_set;
     }
 
 
@@ -338,8 +402,11 @@ namespace param_env
     Eigen::Matrix3d R_;
     Eigen::Vector3d bd_; // the bounding as -+ d
 
-  public:
+    //params for dyn
+    Eigen::Vector3d v;
 
+  public:
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
     CircleGate() = default;
     
     CircleGate(const Eigen::Vector3d &cpt, const Eigen::Vector3d &rect, const double &theta) 
@@ -355,6 +422,8 @@ namespace param_env
       auto pt = R_ * rect_;
 
       bd_ << rect(0) + abs(pt(0)),  rect(0) + abs(pt(1)), rect(2);
+
+      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
     ~CircleGate() {}
@@ -411,6 +480,22 @@ namespace param_env
       R = R_;
     }
 
+    // for dyn
+    void setCenter(Eigen::Vector3d &cpt_set)
+    {
+      cpt_ = cpt_set;
+    }
+
+    void getVel(Eigen::Vector3d &vel)
+    {
+      vel = v;
+    }
+
+    void setVel(Eigen::Vector3d &vel_set)
+    {
+      v = vel_set;
+    }
+
 
   };
   class RectGate
@@ -423,8 +508,11 @@ namespace param_env
     Eigen::Matrix3d R_;
     Eigen::Vector3d bd_; // the bounding as -+ d
 
-  public:
+    //params for dyn
+    Eigen::Vector3d v;
 
+  public:
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
     RectGate() = default;
     
     RectGate(const Eigen::Vector3d &cpt, const Eigen::Vector3d &rect, const double &theta) 
@@ -442,6 +530,7 @@ namespace param_env
       // bd_ << rect(0) + abs(pt(0)),  rect(0) + abs(pt(1)), rect(2);
       bd_ << rect(1), rect(1), rect(2);
 
+      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
     ~RectGate() {}
@@ -491,6 +580,22 @@ namespace param_env
     void getRot(Eigen::Matrix3d &R)
     {
       R = R_;
+    }
+
+    // for dyn
+    void setCenter(Eigen::Vector3d &cpt_set)
+    {
+      cpt_ = cpt_set;
+    }
+
+    void getVel(Eigen::Vector3d &vel)
+    {
+      vel = v;
+    }
+
+    void setVel(Eigen::Vector3d &vel_set)
+    {
+      v = vel_set;
     }
 
   };

@@ -276,6 +276,13 @@ namespace param_env {
 
     }
 
+    void getPC2D(pcl::PointCloud<pcl::PointXYZ> &cloudMap)
+    {
+
+      grid_map_.publish2dMap(cloudMap);
+
+    }
+
     void clear(){
       cloudMap_.clear();
       grid_map_.clearAllOcc();

@@ -1,11 +1,11 @@
 <launch>
 
   <arg name="map_frame_id" default="map"/>
-  <arg name="map_size_x" default="20"/>
-  <arg name="map_size_y" default="20"/>
+  <arg name="map_size_x" default="30"/>
+  <arg name="map_size_y" default="30"/>
   <arg name="map_size_z" default="5"/>
-  <arg name="map_x_origin" default="-10.0"/>
-  <arg name="map_y_origin" default="-10.0"/>
+  <arg name="map_x_origin" default="-15.0"/>
+  <arg name="map_y_origin" default="-15.0"/>
   <arg name="map_z_origin" default="0.0"/>
 
   <arg name="cloud" default="/structure_map/global_gridmap"/>
@@ -23,35 +23,37 @@
     <param name="map/y_origin"   value="$(arg map_y_origin)"/>
     <param name="map/z_origin"   value="$(arg map_z_origin)"/>
 
-    <param name="map/resolution" value="0.2"/>        
+    <param name="map/resolution" value="0.1"/>        
     <param name="map/frame_id"     value="$(arg map_frame_id)" />
-    <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
+    <param name="map/inflate_radius" value="0.1"/> <!-- 0.3 m-->
     
     <param name="clear_path" value="$(arg clear_path)"/>
-    <param name="clear_pos"    value="true"/>
+    <param name="clear_pos"    value="false"/>
 
     <!-- randomly change the map without trigger -->
     <param name="map/auto_change"    value="true"/>
 
+    <param name="map/simple_2d" value="true"/>
+
     <!-- total obstacle ratios -->
     <param name="params/cylinder_ratio" value="0.0" type="double"/>
-    <param name="params/circle_ratio"   value="0.01" type="double"/> <!-- 0.1 x others -->
+    <param name="params/circle_ratio"   value="0.0" type="double"/> <!-- 0.1 x others -->
     <param name="params/gate_ratio"     value="0.0" type="double"/> <!-- 0.1 x others -->
     <param name="params/ellip_ratio"    value="0.0" type="double"/>
     <param name="params/poly_ratio"     value="0.01" type="double"/>
 
     <param name="params/w1" value="0.1"/>
-    <param name="params/w2" value="0.6"/>          
+    <param name="params/w2" value="0.5"/>          
     <param name="params/w3" value="2.0"/>
     
     <!-- add gaussion noise with param/w1 range on it -->
     <param name="params/add_noise" value="false"/>
-    <param name="params/seed" value="0.5"/>
+    <param name="params/seed" value="1"/>
 
     <!-- to generate map dataset in this folder -->
-    <param name="dataset/save_map"    value="false"/>
-    <param name="dataset/samples_num" value="100"/>
-    <param name="dataset/start_index" value="5080900"/>
+    <param name="dataset/save_map"    value="true"/>
+    <param name="dataset/samples_num" value="10000"/>
+    <param name="dataset/start_index" value="100000"/>
     <param name="dataset/path"        value="$(find param_env)/dataset/"/>
 
     <!--dynamic obs param-->
@@ -59,7 +61,7 @@
     <param name="dyn/v_y_h" value="1"/>
     <param name="dyn/v_z_h" value="0.0"/>
     <param name="dyn/dt"        value="10"/>
-    <param name="dyn/dyn_mode"        value="true"/>
+    <param name="dyn/dyn_mode"        value="false"/>
 
   </node>
 

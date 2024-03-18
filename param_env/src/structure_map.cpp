@@ -46,6 +46,9 @@ double _seed;  // random seed
 bool clear_3d = true, _clear_pos = false;
 std::vector<Eigen::Vector3d> clear_pos;
 
+// safe 2d map 
+bool _simple_2d = false;
+
 // dyn part
 double dt = 0.5;
 bool dyn_mode = true;
@@ -120,9 +123,15 @@ void clearCloud()
 
 
 void pubSensedPoints() {
-
-  // get map
-  _struct_map_gen.getPC(cloudMap);
+  
+  if (_simple_2d)
+  {
+    _struct_map_gen.getPC2D(cloudMap);
+  }
+  else
+  {
+    _struct_map_gen.getPC(cloudMap);
+  }
 
   // filter map
   if (_clear_pos)
@@ -137,6 +146,7 @@ void pubSensedPoints() {
                                   std::to_string(_initial_num + _num) +
                                   std::string(".pcd"),
                               cloudMap);
+
   }
   return;
 }
@@ -196,6 +206,7 @@ int main(int argc, char** argv) {
   nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
   nh.param("map/resolution", _grid_mpa.resolution_, 0.1);
   nh.param("map/inflate_radius", _inflate_radius, 0.1);
+  nh.param("map/simple_2d", _simple_2d, false);
 
   _grid_mpa.basic_mp_ = _mpa;
 

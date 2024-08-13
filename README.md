@@ -1,7 +1,7 @@
 # Kumar Lab Parameterized Map
 
 
-All in one! It's a revolution of map parameterization and representation for motion planning! Let's see.
+All in one! It's a revolution in map parameterization and representation for motion planning.
 
 
 ## About
@@ -9,14 +9,17 @@ All in one! It's a revolution of map parameterization and representation for mot
 This repo is related to our evaluation research. If this repo helps your research, please cite our paper at:
 
 ```
-@misc{shao2023design,
-      title={Design and Evaluation of Motion Planners for Quadrotors}, 
-      author={Yifei Simon Shao and Yuwei Wu and Laura Jarin-Lipschitz and Pratik Chaudhari and Vijay Kumar},
-      year={2023},
-      eprint={2309.13720},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO}
-}
+@INPROCEEDINGS{10610207,
+  author={Shao, Yifei Simon and Wu, Yuwei and Jarin-Lipschitz, Laura and Chaudhari, Pratik and Kumar, Vijay},
+  booktitle={2024 IEEE International Conference on Robotics and Automation (ICRA)}, 
+  title={Design and Evaluation of Motion Planners for Quadrotors in Environments with Varying Complexities}, 
+  year={2024},
+  volume={},
+  number={},
+  pages={10033-10039},
+  keywords={Measurement;Navigation;Software algorithms;Kinematics;Planning;Complexity theory;Trajectory},
+  doi={10.1109/ICRA57147.2024.10610207}}
+
 ```
 
 
@@ -37,7 +40,7 @@ This repo is related to our evaluation research. If this repo helps your researc
 
 ### 1.1 Grid Map Reader
 
-It support file format as:
+It supports file format as:
 
 - image map: .png 
 - rosbag: sensor_msgs::PointCloud
@@ -50,14 +53,14 @@ set the map mode and file path in "read_grid_map.launch" and launch
 roslaunch param_env read_grid_map.launch
 ```
 
-The 2D image map are converted into 3d, with z axis having the same content. Maze images are generated with the help of [Multi Solution Maze Generator](https://github.com/shaoyifei96/multi_solution_mazegenerator)
+The 2D image map is converted into 3d, with z-axis having the same content. Maze images are generated with the help of [Multi Solution Maze Generator](https://github.com/shaoyifei96/multi_solution_mazegenerator)
 
 <p align="center">
   <img src="docs/img_map1.png" width = "390" height = "390"/>
   <img src="docs/img_maze1.png" width = "390" height = "390"/>
 </p>
 
-The pointcloud in bags is shown as:
+The point cloud in bags is shown as:
 
 <p align="center">
   <img src="docs/pc1.png" width = "390" height = "390"/>
@@ -90,7 +93,7 @@ The topics:
 roslaunch param_env structure_map.launch
 ```
 
-You can adjust the apprximate ratio of each element (overlapping is also counting now) in the launch file 
+You can adjust the approximate ratio of each element (overlapping is also counting now) in the launch file 
 
 ```
 <param name="map/cylinder_ratio" value="0.10" type="double"/>

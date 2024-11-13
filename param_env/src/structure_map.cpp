@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
   nh.param("dyn/v_y_h", _struct_map_gen.vel_h(1), 0.1);
   nh.param("dyn/v_z_h", _struct_map_gen.vel_h(2), 0.0);
   nh.param("dyn/dt", dt, 10.0);
-  nh.param("dyn/dyn_mode", dyn_mode, true);
+  nh.param("dyn/dyn_mode", dyn_mode, false);
 
   if(!dyn_mode) readClearPos();
 

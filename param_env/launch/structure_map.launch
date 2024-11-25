@@ -11,6 +11,10 @@
   <arg name="cloud" default="/structure_map/global_gridmap"/>
   <arg name="clear_path"  default="$(find param_env)/clear_pos/clear_3d.csv"  />  <!--the positions that should be collision-free-->
   
+  <!-- settings for different maps -->
+  <arg name="simple_2d" default="false"/> <!-- if true, only use 2d map, otherwise use 3d map-->
+  <arg name="auto_change" default="false" /> <!-- if true, the map will change randomly-->
+
 
   <node pkg ="param_env" name ="structure_map" type ="structure_map" output = "screen">    
     <!-- this is the map init position, not the odom-->
@@ -23,20 +27,19 @@
     <param name="map/y_origin"   value="$(arg map_y_origin)"/>
     <param name="map/z_origin"   value="$(arg map_z_origin)"/>
 
-    <param name="map/resolution" value="0.1"/>        
-    <param name="map/frame_id"     value="$(arg map_frame_id)" />
+    <param name="map/resolution"     value="0.1"/>        
+    <param name="map/frame_id"       value="$(arg map_frame_id)" />
     <param name="map/inflate_radius" value="0.1"/> <!-- 0.3 m-->
     
     <param name="clear_path" value="$(arg clear_path)"/>
-    <param name="clear_pos"    value="false"/>
+    <param name="clear_pos"  value="false"/>
 
     <!-- randomly change the map without trigger -->
-    <param name="map/auto_change"    value="true"/>
-
-    <param name="map/simple_2d" value="true"/>
+    <param name="map/auto_change" value="$(arg auto_change)" />
+    <param name="map/simple_2d"   value="$(arg simple_2d)"/>
 
     <!-- total obstacle ratios -->
-    <param name="params/cylinder_ratio" value="0.0" type="double"/>
+    <param name="params/cylinder_ratio" value="0.1" type="double"/>
     <param name="params/circle_ratio"   value="0.0" type="double"/> <!-- 0.1 x others -->
     <param name="params/gate_ratio"     value="0.0" type="double"/> <!-- 0.1 x others -->
     <param name="params/ellip_ratio"    value="0.0" type="double"/>

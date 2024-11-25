@@ -66,7 +66,7 @@ void readClearPos()
     int i = 0;
     while (getline(readstr,number,','))
     {
-      std::cout << "number: "<< number<<std::endl;
+      //std::cout << "number: "<< number<<std::endl;
       data_line(i) = atof(number.c_str());
       i += 1;
     }

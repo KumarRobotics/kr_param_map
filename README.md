@@ -27,7 +27,7 @@ This repo is related to our evaluation research. If this repo helps your researc
 ## 0. Setup
 
 
-### 0.1 general map annotation
+### 0.1 General map annotation
 
 
 <p align="center">
@@ -35,7 +35,27 @@ This repo is related to our evaluation research. If this repo helps your researc
 </p>
 
 
+### 0.2 Prerequisites
+
+
+- Follow the guidance to install [ROS Noetic](https://wiki.ros.org/noetic/Installation/Ubuntu)
+
+- You might encounter package issues for SDL. Please install SDL version 1.x
+  
+```
+sudo apt install libsdl1.2-dev libsdl-image1.2-dev
+```
+
 ## 1. Usage
+
+In your "${YOUR_WORKSPACE_PATH}/src",
+
+```
+git clone git@github.com:KumarRobotics/kr_param_map.git
+cd ../..
+catkin b
+source devel/setup.bash
+```
 
 
 ### 1.1 Grid Map Reader

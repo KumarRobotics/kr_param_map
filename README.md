@@ -40,20 +40,40 @@ This repo is related to our evaluation research. If this repo helps your researc
 
 ### 1.1 Grid Map Reader
 
-It supports file format as:
+Set the map mode and file path in "read_grid_map.launch" and launch 
+```
+roslaunch param_env read_grid_map.launch
+```
+
+We support file format as:
 
 - image map: .png 
 - rosbag: sensor_msgs::PointCloud
 - rosbag: sensor_msgs::PointCloud2
 - pcd
 
-
-set the map mode and file path in "read_grid_map.launch" and launch 
+In the launch file, set "map/mode" to switch to a different mode, and use the following examples to load the map.
 ```
-roslaunch param_env read_grid_map.launch
+<!-- map mode 
+       0 randomly generate
+       1 read the image
+       2 read the ros bag poind cloud 1
+       3 read the ros bag poind cloud 2
+       4 read pcd file -->
+<param name="map/mode"       value="4" />
 ```
 
-The 2D image map is converted into 3d, with z-axis having the same content. Maze images are generated with the help of [Multi Solution Maze Generator](https://github.com/shaoyifei96/multi_solution_mazegenerator)
+We also enable multi-map loading, set folder path, and use_folder as true. If you only want to load a single file, please comment the following:
+
+```
+<param name="folder_path" value="$(find param_env)/data/img/maze/"/>
+<param name="use_folder"  value="false"/>
+```
+
+
+- The 2D image map is converted into 3d, with z-axis having the same content. 
+
+- Maze images are generated with the help of [Multi Solution Maze Generator](https://github.com/shaoyifei96/multi_solution_mazegenerator)
 
 <p align="center">
   <img src="docs/img_map1.png" width = "390" height = "390"/>
@@ -112,7 +132,7 @@ Examples:
   <img src="docs/cluttered.png" width = "390" height = "390"/>
 </p>
 
-By increasing the occupied ratios, it's harder to generate feasible trajectories
+By increasing the occupied ratios, it's harder to generate feasible trajectories.
 
 <p align="center">
   <img src="docs/exp_cy1.png" width = "280" height = "280"/>
@@ -120,7 +140,7 @@ By increasing the occupied ratios, it's harder to generate feasible trajectories
   <img src="docs/exp_cy3.png" width = "280" height = "280"/>
 </p>
 
-You can also enable noise around the obstalce by setting:
+You can also enable noise around the obstacles by setting:
 
 ```
   <param name="params/add_noise" value="true"/>
@@ -154,7 +174,7 @@ or
 </p>
 
 
-For read maps, you can publish all the maps by setting folder path in launch file
+For read maps, you can publish all the maps by setting the folder path in the launch file.
 
 ```
  <param name="folder_path" value="$(find param_env)/data/img/maze/"/>
@@ -162,7 +182,7 @@ For read maps, you can publish all the maps by setting folder path in launch fil
 ```
 
 
-Publish true in topic
+Publish true in topic.
 
 ```
 /structure_map/change_map

@@ -81,46 +81,31 @@ void readClearPos()
 
 void clearCloud()
 {
-  std::cout << "start clear points, the cloudMap.size(): "<< cloudMap.size()<<std::endl;
-    for(pcl::PointCloud<pcl::PointXYZ>::iterator it = cloudMap.begin();
-            it != cloudMap.end();)
-    {
-       Eigen::Vector3d pt(it->x, it->y, it->z);
-      bool remove = false;
-        if (clear_3d)
-        {
-          for (int j = 0; j < clear_pos.size(); j++)
-          {
-            if ((pt - clear_pos[j]).norm() < 2.0)
-            {
-              remove = true;
-              break;
-            }
-          }
-        }else
-        {
-          for (int j = 0; j < clear_pos.size(); j++)
-          {
-            if ((pt.head(2) - clear_pos[j].head(2)).norm() < 2.0)
-            {
-              remove = true;
-              //it = cloudMap.erase(it);   // erase twice, will cause it out of range
-              break;
-            }
-          }
-        }
+    std::cout << "start clear points, the cloudMap.size(): " << cloudMap.size() << std::endl;
 
-        if(remove)
-            it = cloudMap.erase(it);
-        else
-            ++it;
-    }
+    const double radius_sq = 4.0; // 2.0^2
+    const bool use3D = clear_3d;
 
-  std::cout << "cloudMap.size(): "<< cloudMap.size()<<std::endl;
-  return;
+    cloudMap.erase(
+        std::remove_if(cloudMap.begin(), cloudMap.end(),
+            [&](const pcl::PointXYZ &p) {
+                Eigen::Vector3d pt(p.x, p.y, p.z);
+                for (const auto &cp : clear_pos)
+                {
+                    double dist_sq = use3D ?
+                        (pt - cp).squaredNorm() :
+                        (pt.head<2>() - cp.head<2>()).squaredNorm();
+
+                    if (dist_sq < radius_sq)
+                        return true; // mark for removal
+                }
+                return false;
+            }),
+        cloudMap.end()
+    );
+
+    std::cout << "cloudMap.size(): " << cloudMap.size() << std::endl;
 }
-
-
 
 void pubSensedPoints() {
   
@@ -152,8 +137,6 @@ void pubSensedPoints() {
 }
 
 
-
-
 void resCallback(const std_msgs::Float32& msg) {
 
   float res = msg.data;
@@ -162,18 +145,13 @@ void resCallback(const std_msgs::Float32& msg) {
   if (inv_res - float((int)inv_res) < 1e-6) 
   {
     _grid_mpa.resolution_ = res;
-
     _struct_map_gen.changeRes(_grid_mpa.resolution_);
     _struct_map_gen.resetMap();
-
     pubSensedPoints();
 
+  } else {
+    std::cout << "The resolution is not valid! Try a different one !" << std::endl;
   }
-  else
-  {
-    ROS_WARN("The resolution is not valid! Try a different one !");
-  }
-
 
 }
 

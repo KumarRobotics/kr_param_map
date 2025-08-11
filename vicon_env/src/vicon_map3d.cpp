@@ -1,24 +1,26 @@
+#include <fstream>
+#include <iostream>
+#include <math.h>
+#include <random>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+
+#include <Eigen/Eigen>
+
+#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-// #include <pcl/search/kdtree.h>
-#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <unordered_map>
+
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Vector3.h>
-#include <math.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <Eigen/Eigen>
-#include <random>
 
-// for semantic map visualization
+// Semantic map visualization
 #include <visualization_msgs/MarkerArray.h>
 #include <vicon_env/SemanticArray.h>
 
@@ -30,17 +32,14 @@ vector<float> pointRadiusSquaredDistance;
 
 random_device rd;
 default_random_engine eng(rd());
-uniform_real_distribution<double> rand_x;
-uniform_real_distribution<double> rand_y;
-uniform_real_distribution<double> rand_w;
-uniform_real_distribution<double> rand_h;
+std::uniform_real_distribution<double> rand_x, rand_y, rand_w, rand_h;
 
 ros::Publisher _all_map_cloud_pub, _all_map_semantics_pub, _all_map_semantics_pub_vis;
 ros::Subscriber _all_obs_sub;
 
 vector<double> _state;
 
-int _obs_num = 0;
+unsigned int _obs_num = 0;
 double _x_size, _y_size, _z_size;
 double _x_l, _x_h, _y_l, _y_h, _w_l, _w_h, _h_l, _h_h;
 double _z_limit, _sensing_range, _resolution, _sense_rate, _init_x, _init_y;
@@ -217,9 +216,7 @@ void ReadSemantics(){
   }
 
 
-
   _read_semantics = true;
-
 
   return;
 }
@@ -256,7 +253,7 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
     //pt.orientation.w = 1.0;
     // only enable the clyinders in the forest case
     // generate polar obs
-    double x, y, w;
+    double x, y;
 
     x = msg->pose.pose.position.y;
     y = -msg->pose.pose.position.x;
@@ -410,32 +407,17 @@ void obsCallback(const nav_msgs::Odometry::ConstPtr &msg) {
 
 
 /***
- * 
- * the mocap frame is   
- * 
- * ^ y
- * |
- * |
- * |———————— > x
- * 
- * 
- * the virtual global frame is
- * 
- *            ^ x
- *            |
- *            |
- * y <————————|
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * ***/
-
-
+ * Coordinate frame reference:
+ *
+ * Mocap frame:         Virtual global frame:
+ *   ^ y                  ^ x
+ *   |                    |
+ *   |                    |
+ *   |———> x           y <———
+ *
+ * Mocap:  X right, Y up
+ * Global: X up, Y left
+ ***/
 int main(int argc, char** argv) {
 
   ros::init(argc, argv, "vicon_map_node");
@@ -446,9 +428,7 @@ int main(int argc, char** argv) {
   _all_map_semantics_pub = n.advertise<vicon_env::SemanticArray>("/global_semantics", 1);
   //_all_map_semantics_pub_vis = n.advertise<visualization_msgs::MarkerArray>("global_semantics_vis", 1);
 
-
   _all_obs_sub = n.subscribe("vicon_all_obs", 50, &obsCallback);
-
 
   n.param("init_state_x", _init_x, 0.0);
   n.param("init_state_y", _init_y, 0.0);
@@ -463,16 +443,6 @@ int main(int argc, char** argv) {
   n.param("sensing/radius", _sensing_range, 5.0);
   n.param("sensing/rate", _sense_rate, 10.0);
   n.param("semantic_path", _semantic_path, string("case1.csv"));
-
-  // semantics_mk.header.frame_id = _frame_id;
-  // semantics_mk.header.stamp = ros::Time::now();
-  // semantics_mk.type = visualization_msgs::Marker::CYLINDER;
-  // semantics_mk.action  = visualization_msgs::Marker::ADD;
-  // semantics_mk.id = 0;
-  // semantics_mk.color.r = 0.5;
-  // semantics_mk.color.g = 0.5;
-  // semantics_mk.color.b = 0.5;
-  // semantics_mk.color.a = 0.6;
 
   global_semantics_msg.mav_id = -1; // -1 for global, 0 + for the mav_id
   global_semantics_msg.header.frame_id = _frame_id;

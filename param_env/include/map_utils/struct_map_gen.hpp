@@ -12,8 +12,6 @@
 #include <geometry_msgs/Vector3.h>
 #include <math.h>
 #include <nav_msgs/Odometry.h>
-#include <ros/console.h>
-#include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Float32.h>
 #include <iterator>
@@ -512,188 +510,67 @@ namespace param_env {
           grid_map_.setOcc(pt);
           count++;
         }
-      ROS_WARN("GRID OBS: %d", count);
+      std::cout << "GRID OBS: " << count << std::endl;
     }
 
+    // Helper function to update dynamic object movement and point cloud
+    template <typename ShapeT>
+    void update_moving_shape(ShapeT &c, double dt,
+                            double x_l, double x_h,
+                            double y_l, double y_h,
+                            double z_l, double z_h,
+                            pcl::PointCloud<pcl::PointXYZ> &cloudMap_)
+    {
+        Eigen::Vector3d cur_cpt = Eigen::Vector3d::Zero();
+        Eigen::Vector3d next_cpt = Eigen::Vector3d::Zero();
+        Eigen::Vector3d vel = Eigen::Vector3d::Zero();
+        Eigen::Vector3d dist = Eigen::Vector3d::Zero();
 
-    // for dyn movement update
+        c.getCenter(cur_cpt);
+        c.getVel(vel);
+
+        // Update position based on velocity and time step
+        next_cpt = cur_cpt + dt * vel;
+        next_cpt(2) = cur_cpt(2); // Z stays constant
+
+        // Boundary check and bounce
+        auto bounce_axis = [](double &pos, double &vel, double min_v, double max_v) {
+            if (pos < min_v) { pos = min_v; vel *= -1; }
+            if (pos > max_v) { pos = max_v; vel *= -1; }
+        };
+        bounce_axis(next_cpt(0), vel(0), x_l, x_h);
+        bounce_axis(next_cpt(1), vel(1), y_l, y_h);
+        bounce_axis(next_cpt(2), vel(2), z_l, z_h);
+
+        // Apply updated position and velocity
+        c.setCenter(next_cpt);
+        c.setVel(vel);
+
+        // Move associated point cloud
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
+        dist = next_cpt - cur_cpt;
+        move_clouds(c, cloud_obs, dist);
+
+        *(c.cloud) = *cloud_obs;   // update pcl
+        cloudMap_ += *cloud_obs;   // add pcl to global map
+    }
+
+    // Main dynamic movement update function
     void dyn_generate(double dt)
     {
-      double x_l = -10; double y_l = -10; double z_l = 0; // range
-      double x_h = 10; double y_h = 10; double z_h = 5;
-      Eigen::Vector3d cur_cpt = Eigen::Vector3d::Zero(3,1); 
-      Eigen::Vector3d next_cpt = Eigen::Vector3d::Zero(3,1); 
-      Eigen::Vector3d vel = Eigen::Vector3d::Zero(3,1);
-      Eigen::Vector3d dist = Eigen::Vector3d::Zero(3,1);
-      
-      for(auto & c  : cir_list){
-        c.getCenter(cur_cpt);
-        c.getVel(vel);
-        next_cpt(0) = cur_cpt(0) + dt * vel(0);
-        next_cpt(1) = cur_cpt(1) + dt * vel(1);
-        next_cpt(2) = cur_cpt(2);
+        // Movement bounds
+        double x_l = -10, y_l = -10, z_l = 0;
+        double x_h = 10,  y_h = 10,  z_h = 5;
 
-        if(next_cpt(0) < x_l){
-          next_cpt(0) = x_l;  vel(0) *= -1;
-        }
-        if(next_cpt(0) > x_h){
-          next_cpt(0) = x_h;  vel(0) *= -1;
-        }
-        if(next_cpt(1) < y_l){
-          next_cpt(1) = y_l;  vel(1) *= -1;
-        }
-        if(next_cpt(1) > y_h){
-          next_cpt(1) = y_h;  vel(1) *= -1;
-        }
-        if(next_cpt(2) < z_l){
-          next_cpt(2) = z_l;  vel(2) *= -1;
-        }
-        if(next_cpt(2) > z_h){
-          next_cpt(2) = z_h;  vel(2) *= -1;
-        }
-        c.setCenter(next_cpt);
-        c.setVel(vel);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
-        dist = next_cpt - cur_cpt;
-        move_clouds(c, cloud_obs, dist);
-        *(c.cloud) = *cloud_obs;
-        cloudMap_ += *cloud_obs;
-      }
+        // Update all shape lists
+        for (auto &c : cir_list)   update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
+        for (auto &c : ellip_list) update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
+        for (auto &c : cyl_list)   update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
+        for (auto &c : poly_list)  update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
+        for (auto &c : gate_list)  update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
 
-
-      for(auto & c  : ellip_list){
-        c.getCenter(cur_cpt);
-        c.getVel(vel);
-        next_cpt(0) = cur_cpt(0) + dt * vel(0);
-        next_cpt(1) = cur_cpt(1) + dt * vel(1);
-        next_cpt(2) = cur_cpt(2);
-        if(next_cpt(0) < x_l){
-          next_cpt(0) = x_l;  vel(0) *= -1;
-        }
-        if(next_cpt(0) > x_h){
-          next_cpt(0) = x_h;  vel(0) *= -1;
-        }
-        if(next_cpt(1) < y_l){
-          next_cpt(1) = y_l;  vel(1) *= -1;
-        }
-        if(next_cpt(1) > y_h){
-          next_cpt(1) = y_h;  vel(1) *= -1;
-        }
-        if(next_cpt(2) < z_l){
-          next_cpt(2) = z_l;  vel(2) *= -1;
-        }
-        if(next_cpt(2) > z_h){
-          next_cpt(2) = z_h;  vel(2) *= -1;
-        }
-        c.setCenter(next_cpt);
-        c.setVel(vel);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
-        dist = next_cpt - cur_cpt;
-        move_clouds(c, cloud_obs, dist);
-        *(c.cloud) = *cloud_obs;  // update pcl
-        cloudMap_ += *cloud_obs;  // add pcl
-      }
-
-      for(auto & c  : cyl_list){
-        
-        c.getCenter(cur_cpt);
-        c.getVel(vel);
-        next_cpt(0) = cur_cpt(0) + dt * vel(0);
-        next_cpt(1) = cur_cpt(1) + dt * vel(1);
-        next_cpt(2) = cur_cpt(2);
-        if(next_cpt(0) < x_l){
-          next_cpt(0) = x_l;  vel(0) *= -1;
-        }
-        if(next_cpt(0) > x_h){
-          next_cpt(0) = x_h;  vel(0) *= -1;
-        }
-        if(next_cpt(1) < y_l){
-          next_cpt(1) = y_l;  vel(1) *= -1;
-        }
-        if(next_cpt(1) > y_h){
-          next_cpt(1) = y_h;  vel(1) *= -1;
-        }
-        if(next_cpt(2) < z_l){
-          next_cpt(2) = z_l;  vel(2) *= -1;
-        }
-        if(next_cpt(2) > z_h){
-          next_cpt(2) = z_h;  vel(2) *= -1;
-        }
-        c.setCenter(next_cpt);
-        c.setVel(vel);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
-        dist = next_cpt - cur_cpt;
-        move_clouds(c, cloud_obs, dist);
-        *(c.cloud) = *cloud_obs;
-        cloudMap_ += *cloud_obs;
-      }
-
-      for(auto & c  : poly_list){
-        c.getCenter(cur_cpt);
-        c.getVel(vel);
-        next_cpt(0) = cur_cpt(0) + dt * vel(0);
-        next_cpt(1) = cur_cpt(1) + dt * vel(1);
-        next_cpt(2) = cur_cpt(2);
-        if(next_cpt(0) < x_l){
-          next_cpt(0) = x_l;  vel(0) *= -1;
-        }
-        if(next_cpt(0) > x_h){
-          next_cpt(0) = x_h;  vel(0) *= -1;
-        }
-        if(next_cpt(1) < y_l){
-          next_cpt(1) = y_l;  vel(1) *= -1;
-        }
-        if(next_cpt(1) > y_h){
-          next_cpt(1) = y_h;  vel(1) *= -1;
-        }
-        if(next_cpt(2) < z_l){
-          next_cpt(2) = z_l;  vel(2) *= -1;
-        }
-        if(next_cpt(2) > z_h){
-          next_cpt(2) = z_h;  vel(2) *= -1;
-        }
-        c.setCenter(next_cpt);
-        c.setVel(vel);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
-        dist = next_cpt - cur_cpt;
-        move_clouds(c, cloud_obs, dist);
-        *(c.cloud) = *cloud_obs;
-        cloudMap_ += *cloud_obs;
-      }
-
-      for(auto & c  : gate_list){
-        c.getCenter(cur_cpt);
-        c.getVel(vel);
-        next_cpt(0) = cur_cpt(0) + dt * vel(0);
-        next_cpt(1) = cur_cpt(1) + dt * vel(1);
-        next_cpt(2) = cur_cpt(2);
-        if(next_cpt(0) < x_l){
-          next_cpt(0) = x_l;  vel(0) *= -1;
-        }
-        if(next_cpt(0) > x_h){
-          next_cpt(0) = x_h;  vel(0) *= -1;
-        }
-        if(next_cpt(1) < y_l){
-          next_cpt(1) = y_l;  vel(1) *= -1;
-        }
-        if(next_cpt(1) > y_h){
-          next_cpt(1) = y_h;  vel(1) *= -1;
-        }
-        if(next_cpt(2) < z_l){
-          next_cpt(2) = z_l;  vel(2) *= -1;
-        }
-        if(next_cpt(2) > z_h){
-          next_cpt(2) = z_h;  vel(2) *= -1;
-        }
-        c.setCenter(next_cpt);
-        c.setVel(vel);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
-        dist = next_cpt - cur_cpt;
-        move_clouds(c, cloud_obs, dist);
-        *(c.cloud) = *cloud_obs;
-        cloudMap_ += *cloud_obs;
-      }
-      pcl2grid();  // update grid obs
+        // Update grid obstacle map
+        pcl2grid();
     }
   };
 

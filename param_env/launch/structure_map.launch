@@ -32,7 +32,7 @@
     <param name="map/inflate_radius" value="0.1"/> <!-- 0.3 m-->
     
     <param name="clear_path" value="$(arg clear_path)"/>
-    <param name="clear_pos"  value="false"/>
+    <param name="clear_pos"  value="true"/>
 
     <!-- randomly change the map without trigger -->
     <param name="map/auto_change" value="$(arg auto_change)" />

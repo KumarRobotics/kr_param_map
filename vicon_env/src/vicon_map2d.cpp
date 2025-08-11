@@ -1,30 +1,28 @@
+#include <fstream>
+#include <iostream>
+#include <math.h> 
+#include <random>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+
+#include <Eigen/Eigen>
+
+#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-// #include <pcl/search/kdtree.h>
-#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <iostream>
 
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <unordered_map>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Vector3.h>
-#include <math.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
-#include <Eigen/Eigen>
-#include <random>
-
-// for semantic map visualization
-#include <vicon_env/SemanticArray.h>
+// Semantic map
 #include <vicon_env/Circle.h>
-
-
+#include <vicon_env/SemanticArray.h>
 
 
 using namespace std;
@@ -34,18 +32,14 @@ vector<float> pointRadiusSquaredDistance;
 
 random_device rd;
 default_random_engine eng(rd());
-uniform_real_distribution<double> rand_x;
-uniform_real_distribution<double> rand_y;
-uniform_real_distribution<double> rand_w;
-uniform_real_distribution<double> rand_h;
-
+std::uniform_real_distribution<double> rand_x, rand_y, rand_w, rand_h;
 
 ros::Publisher _all_map_cloud_pub, _all_map_semantics_pub, _all_map_semantics_pub_vis;
 ros::Subscriber _all_obs_sub;
 
 vector<double> _state;
 
-int _obs_num = 0;
+unsigned int _obs_num = 0;
 double _x_size, _y_size, _z_size;
 double _x_l, _x_h, _y_l, _y_h, _w_l, _w_h, _h_l, _h_h;
 double _z_limit, _sensing_range, _resolution, _sense_rate, _init_x, _init_y;
@@ -92,18 +86,9 @@ Eigen::Vector2i getTypeNum(std::string obs_name){
  
   char type = obs_name[10]; 
 
-  if(type == 'c'){
-    type_and_num(0) = SEMANTIC_TYPE::CIRCLE;
-  }
-  else if(type == 'e'){
-
-    type_and_num(0) = SEMANTIC_TYPE::ELLIPSE;
-  }
-  else if(type == 'p'){
-
-    type_and_num(0) = SEMANTIC_TYPE::POLYGON;
-
-  }
+  type_and_num(0) = (type == 'c') ? SEMANTIC_TYPE::CIRCLE :
+                    (type == 'e') ? SEMANTIC_TYPE::ELLIPSE :
+                    SEMANTIC_TYPE::POLYGON;
 
 
   int obs_num = 0;
@@ -231,26 +216,6 @@ void ReadSemantics(){
         model.points[3].x =  b*sin_alpha;
         model.points[3].y = -b*cos_alpha;
 
-        // std::cout << "model.normals[0].x " << model.normals[0].x<<std::endl;
-        // std::cout << "model.normals[0].y " << model.normals[0].y<<std::endl;
-        // std::cout << "model.normals[1].x " << model.normals[1].x<<std::endl;
-        // std::cout << "model.normals[1].y " << model.normals[1].y<<std::endl;
-        // std::cout << "model.normals[2].x " << model.normals[2].x<<std::endl;
-        // std::cout << "model.normals[2].y " << model.normals[2].y<<std::endl;
-        // std::cout << "model.normals[3].x " << model.normals[3].x<<std::endl;
-        // std::cout << "model.normals[3].y " << model.normals[3].y<<std::endl;
-
-
-        // std::cout << "model.points[0].x " << model.points[0].x<<std::endl;
-        // std::cout << "model.points[0].y " << model.points[0].y<<std::endl;
-        // std::cout << "model.points[1].x " << model.points[1].x<<std::endl;
-        // std::cout << "model.points[1].y " << model.points[1].y<<std::endl;
-        // std::cout << "model.points[2].x " << model.points[2].x<<std::endl;
-        // std::cout << "model.points[2].y " << model.points[2].y<<std::endl;
-        // std::cout << "model.points[3].x " << model.points[3].x<<std::endl;
-        // std::cout << "model.points[3].y " << model.points[3].y<<std::endl;
-
-
         std::pair<int, vicon_env::Polygon> temp(model_id, model);
         polygons.insert(temp);
 
@@ -361,7 +326,6 @@ void obsCallback(const nav_msgs::Odometry &msg) {
       case SEMANTIC_TYPE::ELLIPSE:
       {
         
-      
         break;
       }
 
@@ -432,9 +396,7 @@ void obsCallback(const nav_msgs::Odometry &msg) {
             }
 
             for (int t = -2.0; t < heiNum; t++) {          
-
               pt_obs.z = (t + 0.5) * _resolution + 1e-2;
-
               cloudMap.points.push_back(pt_obs);
             }
           }
@@ -446,10 +408,7 @@ void obsCallback(const nav_msgs::Odometry &msg) {
 
     }
 
-
     _obs_num += 1;
-
-
 
   }
  
@@ -462,41 +421,21 @@ void obsCallback(const nav_msgs::Odometry &msg) {
   _all_map_cloud_pub.publish(globalMap_pcd);
   _all_map_semantics_pub.publish(global_semantics_msg);
 
-
 }
 
 
 /***
- * 
- * the mocap frame is   
- * 
- * ^ y
- * |
- * |
- * |———————— > x
- * 
- * 
- * the virtual global frame is
- * 
- *            ^ x
- *            |
- *            |
- * y <————————|
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * ***/
-
-
-
-
-
-
+ * Coordinate frame reference:
+ *
+ * Mocap frame:         Virtual global frame:
+ *   ^ y                  ^ x
+ *   |                    |
+ *   |                    |
+ *   |———> x           y <———
+ *
+ * Mocap:  X right, Y up
+ * Global: X up, Y left
+ ***/
 int main(int argc, char** argv) {
 
   ros::init(argc, argv, "vicon_map_node");
@@ -526,7 +465,6 @@ int main(int argc, char** argv) {
   
 
   n.param("semantic_path", _semantic_path, string("case1.csv"));
-
 
 
   // semantics_mk.header.frame_id = _frame_id;

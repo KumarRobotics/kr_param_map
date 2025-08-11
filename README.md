@@ -1,7 +1,12 @@
 # Kumar Lab Parameterized Map
 
-
 All in one! It's a revolution in map parameterization and representation for motion planning.
+
+
+## Branches Overview
+
+* **main**: ROS1 implementation
+* **ros2**: ROS2 implementation ([ros2 branch](https://github.com/KumarRobotics/kr_param_map/tree/ros2))
 
 
 ## About
@@ -21,8 +26,6 @@ This repo is related to our evaluation research. If this repo helps your researc
   doi={10.1109/ICRA57147.2024.10610207}}
 
 ```
-
-
 
 ## 0. Setup
 
@@ -46,7 +49,35 @@ This repo is related to our evaluation research. If this repo helps your researc
 sudo apt install libsdl1.2-dev libsdl-image1.2-dev
 ```
 
-## 1. Usage
+## Usage
+
+### [Update] ROS2 Usage
+
+To build ros2 pacakge:
+
+```
+cd ${YOUR_WORKSPACE_PATH}/src
+git clone git@github.com:KumarRobotics/kr_param_map.git
+cd ../..
+colcon build
+source install/setup.bash
+```
+
+to run structure map:
+
+```
+ros2 launch param_env read_grid_map.launch.py
+```
+
+Or, run read grid map:
+
+```
+ros2 launch param_env read_grid_map.launch.py
+```
+
+### ROS1 Usage
+
+### 1.0 Build
 
 In your "${YOUR_WORKSPACE_PATH}/src",
 
@@ -96,15 +127,15 @@ We also enable multi-map loading, set folder path, and use_folder as true. If yo
 - Maze images are generated with the help of [Multi Solution Maze Generator](https://github.com/shaoyifei96/multi_solution_mazegenerator)
 
 <p align="center">
-  <img src="docs/img_map1.png" width = "390" height = "390"/>
-  <img src="docs/img_maze1.png" width = "390" height = "390"/>
+  <img src="docs/img_map1.png" width = "200" height = "200"/>
+  <img src="docs/img_maze1.png" width = "200" height = "200"/>
 </p>
 
 The point cloud in bags is shown as:
 
 <p align="center">
-  <img src="docs/pc1.png" width = "390" height = "390"/>
-  <img src="docs/pc2.png" width = "390" height = "390"/>
+  <img src="docs/pc1.png" width = "200" height = "200"/>
+  <img src="docs/pc2.png" width = "200" height = "200"/>
 </p>
 
 
@@ -115,8 +146,8 @@ You can also set the inflation (m) to inflate the grid map
 ```
 
 <p align="center">
-  <img src="docs/pcd.png" width = "390" height = "390"/>
-  <img src="docs/pcd_inf.png" width = "390" height = "390"/>
+  <img src="docs/pcd.png" width = "200" height = "200"/>
+  <img src="docs/pcd_inf.png" width = "200" height = "200"/>
 </p>
 
 
@@ -146,18 +177,22 @@ You can adjust the approximate ratio of each element (overlapping is also counti
 Examples:
 
 <p align="center">
-  <img src="docs/exp_gate1.png" width = "390" height = "390"/>
-  <img src="docs/exp_gate2.png" width = "390" height = "390"/>
-  <img src="docs/exp_all2.png" width = "390" height = "390"/>
-  <img src="docs/cluttered.png" width = "390" height = "390"/>
+  <img src="docs/exp_gate1.png" width = "200" height = "200"/>
+  <img src="docs/exp_gate2.png" width = "200" height = "200"/>
 </p>
+
+<p align="center">
+  <img src="docs/exp_all2.png" width = "200" height = "200"/>
+  <img src="docs/cluttered.png" width = "200" height = "200"/>
+</p>
+
 
 By increasing the occupied ratios, it's harder to generate feasible trajectories.
 
 <p align="center">
-  <img src="docs/exp_cy1.png" width = "280" height = "280"/>
-  <img src="docs/exp_cy2.png" width = "280" height = "280"/>
-  <img src="docs/exp_cy3.png" width = "280" height = "280"/>
+  <img src="docs/exp_cy1.png" width = "180" height = "180"/>
+  <img src="docs/exp_cy2.png" width = "180" height = "180"/>
+  <img src="docs/exp_cy3.png" width = "180" height = "180"/>
 </p>
 
 You can also enable noise around the obstacles by setting:
@@ -187,10 +222,13 @@ or
 ```
 
 <p align="center">
-  <img src="docs/res_01.png" width = "390" height = "390"/>
-  <img src="docs/res_02.png" width = "390" height = "390"/>
-  <img src="docs/res_05.png" width = "390" height = "390"/>
-  <img src="docs/res_10.png" width = "390" height = "390"/>
+  <img src="docs/res_01.png" width = "200" height = "200"/>
+  <img src="docs/res_02.png" width = "200" height = "200"/>
+</p>
+
+<p align="center">
+  <img src="docs/res_05.png" width = "200" height = "200"/>
+  <img src="docs/res_10.png" width = "200" height = "200"/>
 </p>
 
 
@@ -229,3 +267,8 @@ If you want to save map, set "dataset/save_map" to true, and set the data number
 ```
 
 It will be saved into the path you set.
+
+
+## Maintaince
+
+For any technical issues, please contact Yuwei Wu (yuweiwu@seas.upenn.edu, yuweiwu20001@outlook.com).

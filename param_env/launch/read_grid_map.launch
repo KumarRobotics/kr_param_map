@@ -6,7 +6,7 @@
   <arg name="map_size_z" default="5"/>
   <arg name="map_x_origin" default="-5.0"/>
   <arg name="map_y_origin" default="-10.0"/>
-  <arg name="map_z_origin" default="-2"/>
+  <arg name="map_z_origin" default="-0.1"/>
 
   <arg name="cloud" default="/read_grid_map/global_gridmap"/>
   <arg name="clear_path"  default="$(find param_env)/clear_pos/clear_3d.csv"  />

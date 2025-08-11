@@ -1,21 +1,24 @@
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
 #include <math.h>
-#include <nav_msgs/Odometry.h>
+#include <nav_msgs/msg/odometry.hpp>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <ros/console.h>
-#include <ros/ros.h>
-#include <rosbag/bag.h>
-#include <rosbag/view.h>
-#include <sensor_msgs/PointCloud.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/point_cloud_conversion.h>
-#include <std_msgs/Bool.h>
-#include <std_msgs/Float32.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/point_cloud_conversion.hpp>
+#include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/float32.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+
+#include <rosbag2_cpp/reader.hpp>
+#include <rosbag2_cpp/readers/sequential_reader.hpp>
+#include <rclcpp/serialization.hpp>
+#include <rclcpp/serialized_message.hpp>
+#include <rcutils/logging_macros.h>
 
 #include <Eigen/Eigen>
 #include <filesystem>
@@ -32,10 +35,11 @@
 using namespace std;
 
 std::string _frame_id;
-ros::Publisher _all_cloud_pub, _all_map_pub;
-ros::Subscriber _res_sub, _gen_map_sub;
+rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _all_cloud_pub, _all_map_pub;
+rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr _res_sub;
+rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _gen_map_sub;
 int _mode;
-sensor_msgs::PointCloud2 globalCloud_pcd, globalMap_pcd;
+sensor_msgs::msg::PointCloud2 globalCloud_pcd, globalMap_pcd;
 std::string topic_name;
 /*** global params for cloudMap ***/
 pcl::PointCloud<pcl::PointXYZ> cloudMap, gridCloudMap;
@@ -125,34 +129,41 @@ void read_img(std::string& path) {
       }
     }
   }
+
+  std::cout << "cloudMap size: " << cloudMap.size() << std::endl;
   SDL_FreeSurface(img);
   toPcsMsg();
 }
 
-/*** read ros bag ***/
 template <class T>
-void read_pcs_bag(std::string& path, std::string& topic, T& msg) {
-  rosbag::Bag bag;
-  bag.open(path, rosbag::bagmode::Read);
+void read_pcs_bag(const std::string & path, const std::string & topic, T & msg)
+{
+  rosbag2_cpp::Reader reader;
+  reader.open(path);
 
-  std::vector<std::string> topics;
-  topics.push_back(topic);
+  rclcpp::Serialization<T> serializer;
+  bool found = false;
 
-  rosbag::View view(bag, rosbag::TopicQuery(topics));
+  while (reader.has_next())
+  {
+    auto bag_message = reader.read_next();
 
-  bool find = false;
-  BOOST_FOREACH (rosbag::MessageInstance const m, view) {
-    if (m.instantiate<T>() != NULL) {
-      msg = *m.instantiate<T>();
-      ROS_WARN("Get data!");
-      find = true;
+    if (bag_message->topic_name == topic)
+    {
+      rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
+      T tmp_msg;
+      serializer.deserialize_message(&serialized_msg, &tmp_msg);
+
+      msg = tmp_msg;
+      RCUTILS_LOG_WARN("Get data!");
+      found = true;
       break;
     }
   }
-  bag.close();
-  if (!find) ROS_WARN("Fail to find '%s' in '%s'", topic.c_str(), path.c_str());
 
-  return;
+  if (!found) {
+    RCUTILS_LOG_WARN("Fail to find '%s' in '%s'", topic.c_str(), path.c_str());
+  }
 }
 
 /*** read pcd file ***/
@@ -191,7 +202,7 @@ void gen_pcs(float bound = 50, int num = 10000) {
 
 void pubSensedPoints() {
   globalCloud_pcd.header.frame_id = _frame_id;
-  _all_cloud_pub.publish(globalCloud_pcd);
+  _all_cloud_pub->publish(globalCloud_pcd);
 
   if (_publish_grid_centers) {
     _grid_map.fillMap(cloudMap, _inflate_radius);
@@ -199,7 +210,7 @@ void pubSensedPoints() {
 
     pcl::toROSMsg(gridCloudMap, globalMap_pcd);
     globalMap_pcd.header.frame_id = _frame_id;
-    _all_map_pub.publish(globalMap_pcd);
+    _all_map_pub->publish(globalMap_pcd);
   }
 }
 
@@ -213,9 +224,9 @@ void readMap(std::string file_path) {
       break;
     }
     case 2: {
-      sensor_msgs::PointCloud msg;
+      sensor_msgs::msg::PointCloud msg;
       read_pcs_bag(file_path, topic_name, msg);
-      convertPointCloudToPointCloud2(msg, globalCloud_pcd);
+      sensor_msgs::convertPointCloudToPointCloud2(msg, globalCloud_pcd);
       pcl::fromROSMsg(globalCloud_pcd, cloudMap);
       break;
     }
@@ -236,7 +247,7 @@ void readMap(std::string file_path) {
 bool nextFile() {
   file_iter++;
   if (file_iter == std::filesystem::directory_iterator()) {
-    ROS_INFO("No more files in directory");
+    std::cout << "No more files in the folder!" << std::endl;
     return false;
   }
   cloudMap.clear();
@@ -245,54 +256,85 @@ bool nextFile() {
   return true;
 }
 
-void resCallback(const std_msgs::Float32& msg) {
-
-
-  float res = msg.data;
+void resCallback(const std_msgs::msg::Float32::SharedPtr msg) {
+  float res = msg->data;
   float inv_res = 1.0 / res;
 
-  if (inv_res - float((int)inv_res) < 1e-6) 
-  {
-
-  _grid_mpa.resolution_ = res;
-  _grid_map.initMap(_grid_mpa);
-
-  pubSensedPoints();
+  if (inv_res - float((int)inv_res) < 1e-6) {
+    _grid_mpa.resolution_ = res;
+    _grid_map.initMap(_grid_mpa);
+    pubSensedPoints();
+  } else {
+    RCLCPP_WARN(rclcpp::get_logger("param_map"), "The resolution is not valid! Try a different one!");
   }
-  else
-  {
-    ROS_WARN("The resolution is not valid! Try a different one !");
-  }
-
 }
 
-void genMapCallback(const std_msgs::Bool& msg) { nextFile(); }
+void genMapCallback(const std_msgs::msg::Bool::SharedPtr msg) { nextFile(); }
+
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "param_map");
-  ros::NodeHandle nh("~");
+  rclcpp::init(argc, argv);
+  auto nh = rclcpp::Node::make_shared("param_map");
 
-  _all_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("global_cloud", 1);
-  _all_map_pub = nh.advertise<sensor_msgs::PointCloud2>("global_gridmap", 1);
+  // Publishers
+  _all_cloud_pub = nh->create_publisher<sensor_msgs::msg::PointCloud2>("global_cloud", 1);
+  _all_map_pub = nh->create_publisher<sensor_msgs::msg::PointCloud2>("global_gridmap", 1);
 
-  _res_sub = nh.subscribe("change_res", 10, resCallback);
-  _gen_map_sub = nh.subscribe("change_map", 10, genMapCallback);
+  // Subscribers
+  _res_sub = nh->create_subscription<std_msgs::msg::Float32>(
+      "change_res", 10, resCallback);
+  _gen_map_sub = nh->create_subscription<std_msgs::msg::Bool>(
+      "change_map", 10, genMapCallback);
 
-  nh.param("map/x_size", _mpa.map_size_(0), 40.0);
-  nh.param("map/y_size", _mpa.map_size_(1), 40.0);
-  nh.param("map/z_size", _mpa.map_size_(2), 5.0);
-  nh.param("map/x_origin", _mpa.map_origin_(0), -20.0);
-  nh.param("map/y_origin", _mpa.map_origin_(1), -20.0);
-  nh.param("map/z_origin", _mpa.map_origin_(2), 0.0);
+  // Parameters (declare then get)
+  nh->declare_parameter("map/x_size", 40.0);
+  nh->declare_parameter("map/y_size", 40.0);
+  nh->declare_parameter("map/z_size", 5.0);
+  nh->declare_parameter("map/x_origin", -20.0);
+  nh->declare_parameter("map/y_origin", -20.0);
+  nh->declare_parameter("map/z_origin", 0.0);
+  nh->declare_parameter("map/resolution", 0.1);
+  nh->declare_parameter("map/frame_id", "map");
+  nh->declare_parameter("map/inflate_radius", 0.1);
+  nh->declare_parameter("map/auto_change", false);
+  nh->declare_parameter("map/publish_grid_centers", false);
+  nh->declare_parameter("bag_topic", "point_clouds_topic");
+  nh->declare_parameter("img/negate", 0);
+  nh->declare_parameter("img/occ_th", 0.65);
+  nh->declare_parameter("map/mode", 0);
+  nh->declare_parameter("folder_path", std::string(""));
+  nh->declare_parameter("use_folder", false);
+  nh->declare_parameter("file_path", std::string("path"));
 
-  nh.param("map/resolution", _grid_mpa.resolution_, 0.1);
-  nh.param("map/frame_id", _frame_id, string("map"));
-  nh.param("map/inflate_radius", _inflate_radius, 0.1);
+  nh->get_parameter("map/x_size", _mpa.map_size_(0));
+  nh->get_parameter("map/y_size", _mpa.map_size_(1));
+  nh->get_parameter("map/z_size", _mpa.map_size_(2));
+  nh->get_parameter("map/x_origin", _mpa.map_origin_(0));
+  nh->get_parameter("map/y_origin", _mpa.map_origin_(1));
+  nh->get_parameter("map/z_origin", _mpa.map_origin_(2));
+  nh->get_parameter("map/resolution", _grid_mpa.resolution_);
+  nh->get_parameter("map/frame_id", _frame_id);
+  nh->get_parameter("map/inflate_radius", _inflate_radius);
+  nh->get_parameter("map/auto_change", _auto_gen);
+  nh->get_parameter("map/publish_grid_centers", _publish_grid_centers);
+  nh->get_parameter("bag_topic", topic_name);
+  nh->get_parameter("img/negate", _negate);
+  nh->get_parameter("img/occ_th", _occ_th);
 
-  nh.param("map/auto_change", _auto_gen, false);
-  nh.param("map/publish_grid_centers", _publish_grid_centers, false);
+  // map mode
+  // 0 --- randomly generate
+  // 1 --- image
+  // 2 --- read the ros bag poind cloud 1
+  // 3 --- read the ros bag poind cloud 2
+  // 4 --- read pcd file
+  nh->get_parameter("map/mode", _mode);
+  std::string folder_path;
+  nh->get_parameter("folder_path", folder_path);
+  nh->get_parameter("use_folder", _use_folder);
+  std::string file_path;
+  nh->get_parameter("file_path", file_path);
 
-  // set up basic parameters for grid map
+  // Init grid map params
   _grid_mpa.basic_mp_ = _mpa;
   _grid_mpa.basic_mp_.min_range_ = _grid_mpa.basic_mp_.map_origin_;
   _grid_mpa.basic_mp_.max_range_ =
@@ -302,43 +344,27 @@ int main(int argc, char** argv) {
                                     _grid_mpa.basic_mp_.map_size_(2);
   _grid_map.initMap(_grid_mpa);
 
-  nh.param("bag_topic", topic_name, std::string("point_clouds_topic"));
-
-  nh.param("img/negate", _negate, 0);
-  nh.param("img/occ_th", _occ_th, 0.65);
-
-  // map mode
-  // 0 --- randomly generate
-  // 1 --- image
-  // 2 --- read the ros bag poind cloud 1
-  // 3 --- read the ros bag poind cloud 2
-  // 4 --- read pcd file
-  nh.param("map/mode", _mode, 0);
-
-  std::string file_path, folder_path;
-
-  nh.param("folder_path", folder_path, std::string(""));
-  nh.param("use_folder", _use_folder, false);
-
-  ros::Duration(5.0).sleep();
+  rclcpp::sleep_for(std::chrono::seconds(5));
 
   if (_use_folder) {
     file_iter = std::filesystem::directory_iterator(folder_path);
     readMap(file_iter->path());
   } else {
-    nh.param("file_path", file_path, std::string("path"));
     readMap(file_path);
   }
 
-  ros::Rate loop_rate(10.0);
-  bool success = true;
+  rclcpp::Rate loop_rate(10);
 
-  while (ros::ok()) {
+  bool success = true;
+  while (rclcpp::ok()) {
     if (_auto_gen && _use_folder && success) {
       success = nextFile();
     }
 
-    ros::spinOnce();
+    rclcpp::spin_some(nh);
     loop_rate.sleep();
   }
+
+  rclcpp::shutdown();
+  return 0;
 }

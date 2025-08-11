@@ -7,13 +7,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <iostream>
 #include <iomanip>
-#include <visualization_msgs/MarkerArray.h>
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/Vector3.h>
 #include <math.h>
-#include <nav_msgs/Odometry.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <std_msgs/Float32.h>
 #include <iterator>
 #include <Eigen/Eigen>
 #include <iomanip>

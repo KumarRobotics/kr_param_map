@@ -1,20 +1,32 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>param_env</name>
   <version>1.0.0</version>
   <description>The parameterized map package</description>
 
   <maintainer email="yuweiwu@seas.upenn.edu">Yuwei Wu</maintainer>
 
-  <author>Yuwei Wu</author>
-
   <license>BSD</license>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <!-- Build tool for ROS 2 -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>rosbag</depend>
-  <depend>roscpp</depend>
+  <!-- Build and run dependencies -->
+  <depend>rosbag2_cpp</depend>
+  <depend>rclcpp</depend>
   <depend>std_msgs</depend>
-  <depend>sdl</depend>
-  <depend>sdl-image</depend>
+  <depend>geometry_msgs</depend>
+  <depend>pcl_conversions</depend>
+  <depend>nav_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <!-- External dependencies -->
+  <depend>SDL</depend>
+  <depend>SDL_image</depend>
+  <depend>ament_cmake</depend> <!-- Needed for rviz -->
+
+  <!-- Export -->
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+
 </package>

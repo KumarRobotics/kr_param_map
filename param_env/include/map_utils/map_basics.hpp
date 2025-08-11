@@ -5,7 +5,7 @@
 #include <iostream>
 #include <map>
 #include <string>
-
+#include <boost/make_shared.hpp>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -212,7 +212,7 @@ namespace param_env
       bd_  = bound;
       cpt_ = cpt;
 
-      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+      cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
     void getBd(Eigen::Vector3d &bd)
@@ -266,7 +266,7 @@ namespace param_env
     Cylinder(const Eigen::Vector3d &cpt, double &r, double &h) : cpt_(cpt), r_(r), h_(h) {
       bd_ << r, r, h;
 
-      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+      cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
     ~Cylinder() {}
@@ -357,7 +357,7 @@ namespace param_env
       d_  = cpt;
       bd_ = bound;
 
-      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+      cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
 
@@ -423,7 +423,7 @@ namespace param_env
 
       bd_ << rect(0) + abs(pt(0)),  rect(0) + abs(pt(1)), rect(2);
 
-      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+      cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
     ~CircleGate() {}
@@ -530,7 +530,7 @@ namespace param_env
       // bd_ << rect(0) + abs(pt(0)),  rect(0) + abs(pt(1)), rect(2);
       bd_ << rect(1), rect(1), rect(2);
 
-      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+      cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
 
     ~RectGate() {}

@@ -12,6 +12,13 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <build_depend>plan_env</build_depend>
+  <exec_depend>plan_env</exec_depend>
+  <build_depend>traj_utils</build_depend>
+  <exec_depend>traj_utils</exec_depend>
+
   <depend>rosbag</depend>
   <depend>roscpp</depend>
   <depend>std_msgs</depend>

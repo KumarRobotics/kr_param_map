@@ -21,6 +21,7 @@ enum GEO_TYPE {
   ELLIPSOID = 5,
   CIRCLEGATE = 6,
   RECTGATE = 7,
+  SPHERE = 8,
 };
 
 class GeoMap {
@@ -35,6 +36,7 @@ class GeoMap {
   std::vector<Ellipsoid> ellipsoid_;
   std::vector<CircleGate> circle_gate_;
   std::vector<RectGate> rect_gate_;
+  std::vector<Sphere> ball_;
 
  public:
   GeoMap() = default;
@@ -52,6 +54,7 @@ class GeoMap {
     ellipsoid_.clear();
     circle_gate_.clear();
     rect_gate_.clear();
+    ball_.clear();
   }
 
   template <class T>
@@ -78,6 +81,9 @@ class GeoMap {
       case GEO_TYPE::RECTGATE:
         rect_gate_.clear();
         break;
+      case GEO_TYPE::SPHERE:
+        ball_.clear();
+        break;
     }
   }
 
@@ -91,6 +97,7 @@ class GeoMap {
   void add(Ellipsoid& geo_rep) { ellipsoid_.push_back(geo_rep); }
   void add(CircleGate& geo_rep) { circle_gate_.push_back(geo_rep); }
   void add(RectGate& geo_rep) { rect_gate_.push_back(geo_rep); }
+  void add(Sphere& geo_rep) { ball_.push_back(geo_rep); }
 
   // 2d
   void getPolygon(std::vector<Polygon>& geo_reps) { geo_reps = polygon_; }
@@ -106,6 +113,7 @@ class GeoMap {
     geo_reps = circle_gate_;
   }
   void getRectGate(std::vector<RectGate>& geo_reps) { geo_reps = rect_gate_; }
+  void getSphere(std::vector<Sphere>& geo_reps) { geo_reps = ball_; }
 
   
 

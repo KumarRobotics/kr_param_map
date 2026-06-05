@@ -11,6 +11,7 @@
 
 #include "geo_utils/quickhull.hpp"
 #include "geo_utils/geo_utils.hpp"
+#include "traj_utils/polynomial_traj.h"
 
 
 namespace param_env
@@ -116,7 +117,6 @@ namespace param_env
 
     //params for dyn
     Eigen::Vector3d v;
-
   public:
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
@@ -241,79 +241,136 @@ namespace param_env
       v = vel_set;
     }
 
-
   };
 
 
-  //--------------- Non-polyhedron
-  class Cylinder // nomral cylinder
-  {
-  private:
-  
-    Eigen::Vector3d cpt_;
-    double r_;
-    double h_;
-    Eigen::Vector3d bd_; // the bounding as -+ d
-
-    //params for dyn
-    Eigen::Vector3d v;
-
-  public:
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-
-    Cylinder() = default;
-    
-    Cylinder(const Eigen::Vector3d &cpt, double &r, double &h) : cpt_(cpt), r_(r), h_(h) {
-      bd_ << r, r, h;
-
-      cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    }
-
-    ~Cylinder() {}
-
-    // Check if the point is inside
-    bool isInside(const Eigen::Vector3d &pt)
+    //--------------- Non-polyhedron
+    class Cylinder // nomral cylinder
     {
-      if ( abs(pt(2) - cpt_(2)) >= 0.5 * h_)
-      {
-        return false;
-      }
-      
-      if (((pt - cpt_).head(2)).norm() > r_)
-      {
-        return false;
-      }
-      return true;
-    }
+    private:
 
-    void getBd(Eigen::Vector3d &bd)
-    {
-      bd = bd_;
-    }
+        Eigen::Vector3d cpt_;
+        double r_;
+        double h_;
+        Eigen::Vector3d bd_; // the bounding as -+ d
 
-    void getCenter(Eigen::Vector3d &cpt)
-    {
-      cpt = cpt_;
-    }
+        //params for dyn
+        Eigen::Vector3d v;
+        Eigen::Vector3d a;
+        PolynomialTraj traj;
+        PolynomialTraj back_traj;
+        Eigen::Vector3d goal;
 
-    // for dyn
-    void setCenter(Eigen::Vector3d &cpt_set)
-    {
-      cpt_ = cpt_set;
-    }
+    public:
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+        double traj_start_time = 0.0;
+        double traj_duration = 0.0;
+        double back_traj_start_time = 0.0;
+        double back_traj_duration = 0.0;
+        double obs_init_time = 0.0;
 
-    void getVel(Eigen::Vector3d &vel)
-    {
-      vel = v;
-    }
+        Cylinder() = default;
 
-    void setVel(Eigen::Vector3d &vel_set)
-    {
-      v = vel_set;
-    }
+        Cylinder(const Eigen::Vector3d &cpt, double &r, double &h) : cpt_(cpt), r_(r), h_(h) {
+            bd_ << r, r, h;
 
-  };
+            cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+        }
 
+        ~Cylinder() {}
+
+        // Check if the point is inside
+        bool isInside(const Eigen::Vector3d &pt)
+        {
+            if ( abs(pt(2) - cpt_(2)) >= 0.5 * h_)
+            {
+                return false;
+            }
+
+            if (((pt - cpt_).head(2)).norm() > r_)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        vector<double> getTimeSeg(){
+            return traj.getTimes();
+        }
+
+        void getBd(Eigen::Vector3d &bd)
+        {
+            bd = bd_;
+        }
+
+        void getCenter(Eigen::Vector3d &cpt)
+        {
+            cpt = cpt_;
+        }
+
+        // for dyn
+        void setCenter(Eigen::Vector3d &cpt_set)
+        {
+            cpt_ = cpt_set;
+        }
+
+        void getVel(Eigen::Vector3d &vel)
+        {
+            vel = v;
+        }
+
+        void setVel(Eigen::Vector3d &vel_set)
+        {
+            v = vel_set;
+        }
+
+        void getAcc(Eigen::Vector3d &acc)
+        {
+            acc = a;
+        }
+
+        void setAcc(Eigen::Vector3d &acc)
+        {
+            a = acc;
+        }
+
+        void getTraj(PolynomialTraj & poly){
+            poly = traj;
+        }
+
+        void setTraj(PolynomialTraj & poly){
+            traj = poly;
+        }
+
+        void getBackTraj(PolynomialTraj & poly){
+            poly = back_traj;
+        }
+
+        void setBackTraj(PolynomialTraj & poly){
+            back_traj = poly;
+        }
+
+        double getHeight()
+        {
+            return h_;
+        }
+
+        double getRadius()
+        {
+            return r_;
+        }
+
+        void setGoal(Eigen::Vector3d & g)
+        {
+            goal = g;
+        }
+
+        void getGoal(Eigen::Vector3d & g)
+        {
+            g = goal;
+        }
+
+    };
   class Ellipsoid
   {
   private:
@@ -321,12 +378,24 @@ namespace param_env
     Eigen::Matrix3d E_; // 3*3 matrix
     Eigen::Vector3d d_;
     Eigen::Vector3d bd_; // the bounding as -+ d
+    Eigen::Matrix3d R_;
+    Eigen::Matrix3d S_;
 
     //params for dyn
     Eigen::Vector3d v;
+    Eigen::Vector3d a;
+    PolynomialTraj traj;
+    PolynomialTraj back_traj;
+    Eigen::Vector3d goal;
 
   public:
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+    double traj_start_time = 0.0;
+    double traj_duration = 0.0;
+    double back_traj_start_time = 0.0;
+    double back_traj_duration = 0.0;
+    double obs_init_time = 0.0;
+
     Ellipsoid() = default;
     
     Ellipsoid(const Eigen::Matrix3d &E, Eigen::Vector3d d) : E_(E), d_(d) {}
@@ -352,7 +421,8 @@ namespace param_env
       coeff_mat << bound(0), 0.0, 0.0,
                     0.0, bound(1), 0.0,
                     0.0, 0.0, bound(2);
-
+      R_ = R;
+      S_ = coeff_mat;
       E_  = R * coeff_mat * R.transpose();
       d_  = cpt;
       bd_ = bound;
@@ -388,7 +458,161 @@ namespace param_env
       v = vel_set;
     }
 
+    void getAcc(Eigen::Vector3d &acc)
+    {
+        acc = a;
+    }
 
+    void setAcc(Eigen::Vector3d &acc)
+    {
+        a = acc;
+    }
+
+    void getTraj(PolynomialTraj & poly){
+        poly = traj;
+    }
+
+    void setTraj(PolynomialTraj & poly){
+        traj = poly;
+    }
+
+    void getBackTraj(PolynomialTraj & poly){
+        poly = back_traj;
+    }
+
+    void setBackTraj(PolynomialTraj & poly){
+        back_traj = poly;
+    }
+
+    void setGoal(Eigen::Vector3d & g)
+    {
+        goal = g;
+    }
+
+    void getGoal(Eigen::Vector3d & g)
+    {
+        g = goal;
+    }
+
+    Eigen::Matrix3d getE()
+    {
+        return E_;
+    }
+
+    Eigen::Matrix3d getR()
+    {
+        return R_;
+    }
+
+    Eigen::Matrix3d getS()
+    {
+        return S_;
+    }
+
+  };
+
+  class Sphere
+  {
+  private:
+
+      Eigen::Vector3d center_; // 3*3 matrix
+      double r_;
+      Eigen::Vector3d bd_;
+
+      //params for dyn
+      Eigen::Vector3d v;
+      Eigen::Vector3d a;
+      PolynomialTraj traj;
+      Eigen::Vector3d goal;
+
+  public:
+      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+      double traj_start_time = 0.0;
+      double traj_duration = 0.0;
+      Sphere() = default;
+
+      Sphere(const Eigen::Vector3d &center, double r) : center_(center), r_(r) {}
+
+      ~Sphere() {}
+
+      // Check if the point is inside
+      bool isInside(const Eigen::Vector3d &pt)
+      {
+          return (pt - center_).norm() <= r_;
+      }
+
+
+      //init a shpere
+      //given the center point and the boundary
+      void init(Eigen::Vector3d &cpt,
+                Eigen::Vector3d &bound,
+                double r)
+      {
+          r_ = r;
+          center_  = cpt;
+          bd_ = bound;
+          cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+      }
+
+
+
+      void getBd(Eigen::Vector3d &bd)
+      {
+          bd = bd_;
+      }
+
+      void getCenter(Eigen::Vector3d &cpt)
+      {
+          cpt = center_;
+      }
+
+        // for dyn
+      void setCenter(Eigen::Vector3d &cpt_set)
+      {
+          center_ = cpt_set;
+      }
+
+      void getVel(Eigen::Vector3d &vel)
+      {
+          vel = v;
+      }
+
+      void setVel(Eigen::Vector3d &vel_set)
+      {
+          v = vel_set;
+      }
+      void getAcc(Eigen::Vector3d &acc)
+      {
+          acc = a;
+      }
+
+      void setAcc(Eigen::Vector3d &acc)
+      {
+          a = acc;
+      }
+
+      void getTraj(PolynomialTraj & poly){
+          poly = traj;
+      }
+
+      void setTraj(PolynomialTraj & poly){
+          traj = poly;
+      }
+
+      double getRadius()
+      {
+          return r_;
+      }
+
+      void setGoal(Eigen::Vector3d & g)
+      {
+          goal = g;
+      }
+
+      void getGoal(Eigen::Vector3d & g)
+      {
+          g = goal;
+      }
   };
 
 
@@ -404,7 +628,6 @@ namespace param_env
 
     //params for dyn
     Eigen::Vector3d v;
-
   public:
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
     CircleGate() = default;
@@ -496,7 +719,6 @@ namespace param_env
       v = vel_set;
     }
 
-
   };
   class RectGate
   {
@@ -510,7 +732,6 @@ namespace param_env
 
     //params for dyn
     Eigen::Vector3d v;
-
   public:
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
     RectGate() = default;

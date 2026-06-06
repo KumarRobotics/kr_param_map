@@ -16,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   message_generation
   plan_env
-  traj_utils
 )
 
 include_directories(
@@ -31,7 +30,7 @@ include_directories(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES
- CATKIN_DEPENDS message_runtime plan_env traj_utils
+ CATKIN_DEPENDS message_runtime plan_env
 #  DEPENDS system_lib
 )
 

@@ -11,7 +11,7 @@
 
 #include "geo_utils/quickhull.hpp"
 #include "geo_utils/geo_utils.hpp"
-#include "traj_utils/polynomial_traj.h"
+#include <plan_env/polynomial_traj.hpp>
 
 
 namespace param_env

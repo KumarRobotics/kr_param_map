@@ -1,24 +1,20 @@
 <launch>
 
-  <arg name="map_frame_id" default="map"/>
-  <arg name="map_size_x" default="30"/>
-  <arg name="map_size_y" default="30"/>
+  <arg name="map_frame_id" default="dragonfly21/odom"/>
+  <arg name="map_size_x" default="20"/>
+  <arg name="map_size_y" default="20"/>
   <arg name="map_size_z" default="5"/>
-  <arg name="map_x_origin" default="-15.0"/>
-  <arg name="map_y_origin" default="-15.0"/>
+  <arg name="map_x_origin" default="-10.0"/>
+  <arg name="map_y_origin" default="-10.0"/>
   <arg name="map_z_origin" default="0.0"/>
 
-  <arg name="cloud" default="/structure_map/global_gridmap"/>
+  <!-- <arg name="cloud" default="/structure_map/global_gridmap"/> -->
   <arg name="clear_path"  default="$(find param_env)/clear_pos/clear_3d.csv"  />  <!--the positions that should be collision-free-->
   
-  <!-- settings for different maps -->
-  <arg name="simple_2d" default="false"/> <!-- if true, only use 2d map, otherwise use 3d map-->
-  <arg name="auto_change" default="false" /> <!-- if true, the map will change randomly-->
-
 
   <node pkg ="param_env" name ="structure_map" type ="structure_map" output = "screen">    
     <!-- this is the map init position, not the odom-->
-    <remap from="~global_cloud" to="$(arg cloud)"/>
+    <!-- <remap from="~global_cloud" to="$(arg cloud)"/> -->
 
     <param name="map/x_size"     value="$(arg map_size_x)" />
     <param name="map/y_size"     value="$(arg map_size_y)" />
@@ -27,44 +23,58 @@
     <param name="map/y_origin"   value="$(arg map_y_origin)"/>
     <param name="map/z_origin"   value="$(arg map_z_origin)"/>
 
-    <param name="map/resolution"     value="0.1"/>        
-    <param name="map/frame_id"       value="$(arg map_frame_id)" />
-    <param name="map/inflate_radius" value="0.1"/> <!-- 0.3 m-->
+    <param name="map/resolution" value="0.2"/>        
+    <param name="map/frame_id"     value="$(arg map_frame_id)" />
+    <param name="map/inflate_radius" value="0.2"/> <!-- 0.3 m-->
     
     <param name="clear_path" value="$(arg clear_path)"/>
-    <param name="clear_pos"  value="true"/>
+    <param name="clear_pos"    value="true"/>
 
     <!-- randomly change the map without trigger -->
-    <param name="map/auto_change" value="$(arg auto_change)" />
-    <param name="map/simple_2d"   value="$(arg simple_2d)"/>
+    <param name="map/auto_change"    value="false"/>
 
     <!-- total obstacle ratios -->
-    <param name="params/cylinder_ratio" value="0.1" type="double"/>
-    <param name="params/circle_ratio"   value="0.0" type="double"/> <!-- 0.1 x others -->
-    <param name="params/gate_ratio"     value="0.0" type="double"/> <!-- 0.1 x others -->
-    <param name="params/ellip_ratio"    value="0.0" type="double"/>
-    <param name="params/poly_ratio"     value="0.01" type="double"/>
+    <param name="params/static_cylinder_ratio" value="0.01" type="double"/>
+    <param name="params/static_circle_ratio"   value="0.00" type="double"/> <!-- 0.1 x others -->
+    <param name="params/static_gate_ratio"     value="0.00" type="double"/> <!-- 0.1 x others -->
+    <param name="params/static_ellip_ratio"    value="0.00" type="double"/>
+    <param name="params/static_poly_ratio"     value="0.00" type="double"/>
+    <param name="params/static_ball_ratio_"     value="0.00" type="double"/>
+    <param name="params/dyn_cylinder_ratio" value="0.000" type="double"/>  <!-- only this can work for now-->
+    <param name="params/dyn_circle_ratio"   value="0.000" type="double"/> <!-- 0.1 x others -->
+    <param name="params/dyn_gate_ratio"     value="0.000" type="double"/> <!-- 0.1 x others -->
+    <param name="params/dyn_ellip_ratio"    value="0.01" type="double"/>
+    <param name="params/dyn_poly_ratio"     value="0.00" type="double"/>
+    <param name="params/dyn_ball_ratio_"     value="0.00" type="double"/> <!-- only this can work for now-->
 
-    <param name="params/w1" value="0.1"/>
-    <param name="params/w2" value="0.5"/>          
-    <param name="params/w3" value="2.0"/>
+    <param name="params/w1" value="0.4"/>
+    <param name="params/w2" value="0.4"/>
+    <param name="params/w3" value="0.4"/>
     
     <!-- add gaussion noise with param/w1 range on it -->
     <param name="params/add_noise" value="false"/>
-    <param name="params/seed" value="1"/>
+    <param name="params/seed" value="0.5"/>
 
     <!-- to generate map dataset in this folder -->
-    <param name="dataset/save_map"    value="true"/>
-    <param name="dataset/samples_num" value="10000"/>
-    <param name="dataset/start_index" value="100000"/>
+    <param name="dataset/save_map"    value="false"/>
+    <param name="dataset/samples_num" value="100"/>
+    <param name="dataset/start_index" value="5080900"/>
     <param name="dataset/path"        value="$(find param_env)/dataset/"/>
 
     <!--dynamic obs param-->
-    <param name="dyn/v_x_h"    value="1"/>
-    <param name="dyn/v_y_h" value="1"/>
-    <param name="dyn/v_z_h" value="0.0"/>
-    <param name="dyn/dt"        value="10"/>
-    <param name="dyn/dyn_mode"        value="false"/>
+    <param name="dyn/v_x"    value="0.3"/>  <!-- for previous constant v version-->
+    <param name="dyn/v_y" value="0.3"/>     <!-- for previous constant v version-->
+    <param name="dyn/v_z" value="0.3"/>     <!-- for previous constant v version-->
+    <param name="dyn/v_x_max"    value="0.25"/>
+    <param name="dyn/v_y_max" value="0.25"/>
+    <param name="dyn/v_z_max" value="0.25"/>
+    <param name="dyn/a_x_max"    value="0.3"/>
+    <param name="dyn/a_y_max" value="0.3"/>
+    <param name="dyn/a_z_max" value="0.3"/>
+    <param name="dyn/dt"        value="15"/>
+    <param name="dyn/horizon"  value="25"/>
+    <!--  BothDynStaticMode = 0, OnlyDynMode = 1, OnlyStaticMode = 2, RandomStaticMode = 3 -->
+    <param name="dyn/map_mode"  value="0" type="int"/>
 
   </node>
 

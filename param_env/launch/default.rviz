@@ -1,28 +1,16 @@
 Panels:
   - Class: rviz/Displays
-    Help Height: 0
+    Help Height: 172
     Name: Displays
     Property Tree Widget:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Grid1
         - /Grid1/Offset1
-        - /robo1
-        - /command1
-        - /Planner1
-        - /Planner1/graph1
-        - /Planner1/local goal point1
-        - /Planner1/global list1
-        - /Planner1/frontend list1
-        - /Planner1/init list1
-        - /Planner1/collision1
-        - /Planner1/bspline1
-        - /obs_trajs_vis1
-        - /sfc1
-        - /text1
-      Splitter Ratio: 0.48322147130966187
-    Tree Height: 726
+        - /ParamMap1/StructMap1
+        - /ParamMap1/GridMap1
+      Splitter Ratio: 0.5
+    Tree Height: 1013
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -40,7 +28,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: dynamicObs
+    SyncSource: StructMap
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -72,43 +60,31 @@ Visualization Manager:
         Y: 0
         Z: 0
       Plane: XY
-      Plane Cell Count: 20
+      Plane Cell Count: 80
       Reference Frame: <Fixed Frame>
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.30000001192092896
+      Head Radius: 0.10000000149011612
+      Name: target
+      Queue Size: 10
+      Shaft Length: 1
+      Shaft Radius: 0.05000000074505806
+      Shape: Arrow
+      Topic: /move_base_simple/goal
+      Unreliable: false
       Value: true
     - Class: rviz/Group
       Displays:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: 3.700000047683716
-            Min Value: 0.10000000149011612
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 85; 87; 83
-          Color Transformer: AxisColor
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: dynamicObs
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 3
-          Size (m): 0.20000000298023224
-          Style: Boxes
-          Topic: /structure_map/moving_cloud
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-        - Alpha: 1
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 3.950000047683716
+            Max Value: 4.949999809265137
             Min Value: 0.05000000074505806
             Value: true
           Axis: Z
@@ -121,214 +97,81 @@ Visualization Manager:
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
-          Name: staticObs-gridnode-local
+          Name: StructMap
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
           Size (Pixels): 3
           Size (m): 0.20000000298023224
           Style: Boxes
-          Topic: /dragonfly21/planner_node/grid_map/occupancy_inflate
+          Topic: /structure_map/global_gridmap
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 2.8499999046325684
+            Min Value: -0.05000000074505806
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 211; 215; 207
+          Color Transformer: AxisColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: GridMap
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.10000000149011612
+          Style: Boxes
+          Topic: /read_grid_map/global_gridmap
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 2.8499999046325684
+            Min Value: -0.05000000074505806
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: point_clouds
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.10000000149011612
+          Style: Boxes
+          Topic: /read_grid_map/global_cloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
       Enabled: true
       Name: ParamMap
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /dragonfly21/mesh_visualization/robot
-      Name: robo
-      Namespaces:
-        /dragonfly21/mesh_visualization: true
-      Queue Size: 100
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 255; 25; 0
-      Enabled: true
-      Head Length: 0.30000001192092896
-      Head Radius: 0.10000000149011612
-      Name: command
-      Queue Size: 10
-      Shaft Length: 1
-      Shaft Radius: 0.05000000074505806
-      Shape: Axes
-      Topic: /dragonfly21/so3_control/cmd_viz
-      Unreliable: false
-      Value: true
-    - Class: rviz/InteractiveMarkers
-      Enable Transparency: true
-      Enabled: true
-      Name: InteractiveMarkers
-      Show Axes: false
-      Show Descriptions: true
-      Show Visual Aids: false
-      Update Topic: /waypoint_nav/update
-      Value: true
-    - Class: rviz/Group
-      Displays:
-        - Class: rviz/MarkerArray
-          Enabled: true
-          Marker Topic: /dragonfly21/planner_node/graph
-          Name: graph
-          Namespaces:
-            {}
-          Queue Size: 1000
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /dragonfly21/planner_node/local_goal_point
-          Name: local goal point
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /dragonfly21/planner_node/global_list
-          Name: global list
-          Namespaces:
-            "": true
-          Queue Size: 100
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /dragonfly21/planner_node/a_star_list
-          Name: frontend list
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /dragonfly21/planner_node/init_list
-          Name: init list
-          Namespaces:
-            "": true
-          Queue Size: 100
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /dragonfly21/planner_node/collision
-          Name: collision
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /dragonfly21/planner_node/optimal_list
-          Name: bspline
-          Namespaces:
-            "": true
-          Queue Size: 100
-          Value: true
-      Enabled: true
-      Name: Planner
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: PointCloud2
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.10000000149011612
-      Style: Flat Squares
-      Topic: /structure_map/moving_cloud
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 0.6000000238418579
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 4.900000095367432
-        Min Value: 0.10000000149011612
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: staticObs-rviz-global
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.20000000298023224
-      Style: Boxes
-      Topic: /structure_map/global_cloud
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /dragonfly21/planner_node/obs_trajs_list
-      Name: obs_trajs_vis
-      Namespaces:
-        "": true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: false
-      Marker Topic: /quadrotor/planner_node/collision
-      Name: collsionpointInFSM
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /dragonfly21/planner_node/sfc
-      Name: sfc
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /dragonfly21/planner_node/text
-      Name: text
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /dragonfly21/planner_node/first_collision
-      Name: first_collision
-      Namespaces:
-        "": true
-      Queue Size: 100
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 243; 243; 243
     Default Light: true
-    Fixed Frame: dragonfly21/odom
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
@@ -348,16 +191,11 @@ Visualization Manager:
     - Class: rviz/PublishPoint
       Single click: true
       Topic: /clicked_point
-    - Class: waypoint_nav_plugin/WaypointNav
-      WaypointsTool:
-        default_height: 0
-        frame_id: dragonfly21/odom
-        topic: /dragonfly21/waypoints
   Value: true
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 29.019807815551758
+      Distance: 45.30493927001953
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -365,25 +203,25 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -1.4020287990570068
-        Y: -0.2877301871776581
-        Z: -4.302258491516113
+        X: -0.8706558346748352
+        Y: -0.410312294960022
+        Z: 0.629726767539978
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 1.4897968769073486
       Target Frame: <Fixed Frame>
-      Yaw: 1.5182543992996216
+      Yaw: 3.1450998783111572
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1976
+  Height: 1637
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000004aa0000067cfc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000da00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000dafb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c00610079007301000000860000035c000001de00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000260057006100790070006f0069006e00740020004e0061007600690067006100740069006f006e01000003f100000311000001b400ffffff00000001000001b40000039dfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000039d0000017800fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000096f00000071fc0100000002fb0000000800540069006d006501000000000000096f000008a800fffffffb0000000800540069006d00650100000000000004500000000000000000000004b60000067c00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000026b00000527fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000da00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000dafb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000008600000527000001de00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c0000026100000001000001b40000039dfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000039d0000017800fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000096f00000073fc0100000002fb0000000800540069006d006501000000000000096f000008a800fffffffb0000000800540069006d00650100000000000004500000000000000000000006f50000052700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -392,8 +230,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: false
-  Waypoint Navigation:
-    collapsed: false
   Width: 2415
-  X: 144
+  X: 100
   Y: 68

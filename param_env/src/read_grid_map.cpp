@@ -60,11 +60,10 @@ void toPcsMsg() {
 
 /*** read image map ***/
 void read_img(std::string& path) {
-  std::cout << path << std::endl;
+  std::cout << "Reading image map from: " << path << std::endl;
 
   // cloudMap
   SDL_Surface* img;
-
   unsigned char* p;
   unsigned char value;
   int avg_channels, alpha, color_sum;
@@ -89,11 +88,6 @@ void read_img(std::string& path) {
   double ratio_map_to_img_x = img->w / dim_x;
   double ratio_map_to_img_y = img->h / dim_y;
 
-  // std::cout << "dim_x" <<dim_x << std::endl;
-  // std::cout << "dim_y" << dim_y << std::endl;
-
-  // std::cout << "img->w" << img->w<< std::endl;
-  // std::cout << "img->h" << img->h << std::endl;
   // NOTE: Trinary mode still overrides here to preserve existing behavior.
   // Alpha will be averaged in with color channels when using trinary mode.
   avg_channels = n_channels;
@@ -118,7 +112,6 @@ void read_img(std::string& path) {
           alpha = *(p + n_channels - 1);
 
         if (_negate == 1) color_avg = 255 - color_avg;
-
         // If negate is true, we consider blacker pixels free, and whiter
         // pixels occupied.  Otherwise, it's vice versa.
         double occ = (255 - color_avg) / 255.0;
@@ -132,7 +125,6 @@ void read_img(std::string& path) {
       }
     }
   }
-
   SDL_FreeSurface(img);
   toPcsMsg();
 }

@@ -497,6 +497,52 @@ namespace param_env
 
     }
 
+    void publish2dMap(pcl::PointCloud<pcl::PointXYZ> &cloudMap)
+    {
+
+      pcl::PointXYZ pt;
+      cloudMap.clear();
+
+      Eigen::Vector3d max_pos = mp_.basic_mp_.max_range_;
+      Eigen::Vector3d pos;
+
+
+      
+      for (int x = 0; x < mp_.map_grid_size_(0); ++x)
+      {
+        for (int y = 0; y < mp_.map_grid_size_(1); ++y)
+        {
+          bool occ = false;
+          for (int z = 0; z < mp_.map_grid_size_(2); ++z)
+          {
+            
+            if (occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] > mp_.min_thrd_) 
+            {
+              //std::cout << occupancy_buffer_[getBufferCnt(Eigen::Vector3i(x, y, z))] << std::endl;
+              occ = true;
+              indexToPos(Eigen::Vector3i(x, y, z), pos);
+              break;
+            }
+          }
+          if (occ)
+          {
+            pt.x = pos(0);
+            pt.y = pos(1);
+            pt.z = 0.0;
+            cloudMap.push_back(pt);
+          }
+
+        }
+      }
+
+      cloudMap.width = cloudMap.points.size();
+      cloudMap.height = 1;
+      cloudMap.is_dense = true;
+
+
+
+    }
+
 
     // clear all the obs
     void clearAllOcc()

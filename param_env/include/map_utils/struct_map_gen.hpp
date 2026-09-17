@@ -12,8 +12,6 @@
 #include <geometry_msgs/Vector3.h>
 #include <math.h>
 #include <nav_msgs/Odometry.h>
-#include <ros/console.h>
-#include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Float32.h>
 #include <iterator>
@@ -26,15 +24,13 @@
 #include <map_utils/map_basics.hpp>
 #include <random>
 #include <pcl/common/transforms.h>
-#include <plan_env/Obsinfo.h>
 
 namespace param_env {
 
   struct MapGenParams
   {
     /* parameters for map generator */
-    double static_cylinder_ratio_, static_circle_ratio_, static_gate_ratio_, static_ellip_ratio_, static_poly_ratio_, static_ball_ratio_;
-    double dyn_cylinder_ratio_, dyn_circle_ratio_, dyn_gate_ratio_, dyn_ellip_ratio_, dyn_poly_ratio_, dyn_ball_ratio_;
+    double cylinder_ratio_, circle_ratio_, gate_ratio_, ellip_ratio_, poly_ratio_;
     double w1_, w2_, w3_;
     bool add_noise_ = false;
   };
@@ -43,7 +39,7 @@ namespace param_env {
   {
   private:
 
-    pcl::PointCloud<pcl::PointXYZ> cloudMap_, moving_cloudMap_; // moving_cloudMap_ only for visualization, while cloudmap only contain static obs that's sent to grid map
+    pcl::PointCloud<pcl::PointXYZ> cloudMap_;
 
     param_env::GridMap grid_map_;
     param_env::GeoMap geo_map_;
@@ -54,14 +50,14 @@ namespace param_env {
     default_random_engine eng;
     uniform_real_distribution<double> rand_theta, rand_w, rand_h, rand_cw, rand_radiu, rand_vx, rand_vy, rand_vz;
 
-  public:
-
     // dyn param
     std::vector<param_env::Cylinder> cyl_list; std::vector<param_env::CircleGate>  cir_list;
     std::vector<param_env::RectGate>  gate_list; std::vector<param_env::Ellipsoid>  ellip_list;
-    std::vector<param_env::Polyhedron> poly_list; std::vector<param_env::Sphere> ball_list;
+    std::vector<param_env::Polyhedron> poly_list; 
 
-    Eigen::Vector3d vel, vel_l, vel_h, vel_bound, acc_bound;
+  public:
+
+    Eigen::Vector3d vel, vel_l, vel_h;
 
     StructMapGenerator() = default;
     ~StructMapGenerator() {}
@@ -72,7 +68,7 @@ namespace param_env {
     }
 
     template<class T>
-    int updatePts(T &geo_rep, bool if_dyn = false)
+    int updatePts(T &geo_rep)
     {
       int cur_grids = 0;
 
@@ -107,15 +103,8 @@ namespace param_env {
             pt_random.x = ob_pt(0);
             pt_random.y = ob_pt(1);
             pt_random.z = ob_pt(2);
-            if (if_dyn)
-            {
-              moving_cloudMap_.points.push_back(pt_random);
-            }
-            else
-            {
-              cloudMap_.points.push_back(pt_random);
-            }
 
+            cloudMap_.points.push_back(pt_random);
             cur_grids += 1;
             total_pts.push_back(ob_pt);
 
@@ -147,14 +136,8 @@ namespace param_env {
             pt_random.x = ob_pt(0);
             pt_random.y = ob_pt(1);
             pt_random.z = ob_pt(2);
-            if (if_dyn)
-            {
-              moving_cloudMap_.points.push_back(pt_random);
-            }
-            else
-            {
-              cloudMap_.points.push_back(pt_random);
-            }
+            cloudMap_.points.push_back(pt_random);
+
             geo_rep.cloud->push_back(pt_random); // get cloud at 1st iter
           }
         }
@@ -164,7 +147,7 @@ namespace param_env {
     }
 
     template<class T>
-    int updatePtsLight(T &geo_rep, bool if_dyn = false)
+    int updatePtsLight(T &geo_rep)
     {
       int cur_grids = 0;
       Eigen::Vector3d rect, cpt, ob_pt;
@@ -204,15 +187,8 @@ namespace param_env {
               pt_random.x = ob_pt(0);
               pt_random.y = ob_pt(1);
               pt_random.z = ob_pt(2);
-              
-              if (if_dyn)
-              {
-                moving_cloudMap_.points.push_back(pt_random);
-              }
-              else
-              {
-                cloudMap_.points.push_back(pt_random);
-              }
+
+              cloudMap_.points.push_back(pt_random);
               cur_grids += 1;
               total_pts.push_back(ob_pt);
 
@@ -243,14 +219,8 @@ namespace param_env {
             pt_random.x = ob_pt(0);
             pt_random.y = ob_pt(1);
             pt_random.z = ob_pt(2);
-            if (if_dyn)
-            {
-              moving_cloudMap_.points.push_back(pt_random);
-            }
-            else
-            {
-              cloudMap_.points.push_back(pt_random);
-            }
+            cloudMap_.points.push_back(pt_random);
+
             geo_rep.cloud->push_back(pt_random); // get cloud at 1st iter
           }
         }
@@ -292,46 +262,27 @@ namespace param_env {
 
     }
 
-      void AddGround(){
-          float min_x = mpa_.basic_mp_.min_range_(0);
-          float min_y = mpa_.basic_mp_.min_range_(1);
-          float min_z = mpa_.basic_mp_.min_range_(2);
-          float max_x = mpa_.basic_mp_.max_range_(0);
-          float max_y = mpa_.basic_mp_.max_range_(1);
-          float max_z = mpa_.basic_mp_.max_range_(2);
-          for(float x = min_x + 1e-3; x <= max_x - 1e-3; x += 0.2){
-              for(float y = min_y + 1e-3; y <= max_y - 1e-3; y += 0.2){
-                  pcl::PointXYZ pt;
-                  pt.x = x;
-                  pt.y = y;
-                  pt.z = 1e-3;
-                  cloudMap_.points.push_back(pt);
-              }
-          }
-      }
-
 
     void getPC(pcl::PointCloud<pcl::PointXYZ> &cloudMap)
     {
+
       cloudMap_.width = cloudMap_.points.size();
       cloudMap_.height = 1;
       cloudMap_.is_dense = true;
 
       cloudMap = cloudMap_;
+
     }
 
-    void getMovingPC(pcl::PointCloud<pcl::PointXYZ> &moving_cloudMap)
+    void getPC2D(pcl::PointCloud<pcl::PointXYZ> &cloudMap)
     {
-      moving_cloudMap_.width = moving_cloudMap_.points.size();
-      moving_cloudMap_.height = 1;
-      moving_cloudMap_.is_dense = true;
 
-      moving_cloudMap = moving_cloudMap_;
+      grid_map_.publish2dMap(cloudMap);
+
     }
 
     void clear(){
       cloudMap_.clear();
-      moving_cloudMap_.clear();
       grid_map_.clearAllOcc();
       geo_map_.clearAll();
     }
@@ -341,57 +292,58 @@ namespace param_env {
     {
 
       cloudMap_.clear();
-      moving_cloudMap_.clear();
 
       std::vector<param_env::Polyhedron> polyhedron;
       std::vector<param_env::Cylinder> cylinder;
       std::vector<param_env::Ellipsoid> ellipsoid;
       std::vector<param_env::CircleGate> circle_gate;
-      std::vector<param_env::RectGate> rect_gate;
-      std::vector<param_env::Sphere> ball;
+      std::vector<param_env::RectGate> rect_gate; 
 
       geo_map_.getPolyhedron(polyhedron);
       geo_map_.getCylinder(cylinder);
       geo_map_.getEllipsoid(ellipsoid);
       geo_map_.getCircleGate(circle_gate);
       geo_map_.getRectGate(rect_gate);
-      geo_map_.getSphere(ball);
 
       traversePts(polyhedron);
       traversePts(cylinder);
       traversePts(ellipsoid);
       traversePts(circle_gate);
       traversePts(rect_gate);
-      traversePts(ball);
     }
-
-    // Just for randomly static generation case:
-    void change_ratios(double &seed,float dt)
+    
+    void change_ratios(double &seed, bool if_dyn, float dt)
     {
+      if(if_dyn) {  // dynamic update
+        dyn_generate(dt);
+        return;
+      }
+
       eng.seed(seed);
 
-      mgpa_.static_cylinder_ratio_ = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-      mgpa_.static_circle_ratio_   = 0.1  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-      mgpa_.static_gate_ratio_     = 0.1  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-      mgpa_.static_ellip_ratio_    = 0.5  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-      mgpa_.static_poly_ratio_     = 0.5  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.cylinder_ratio_ = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.circle_ratio_   = 0.1  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.gate_ratio_     = 0.1  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.ellip_ratio_    = 0.5  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.poly_ratio_     = 0.5  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
 
-      generate(false); // false
+      generate(if_dyn); // false
     }
 
     void randomUniMapGen(param_env::MapGenParams &mgpa, double &seed, bool if_dyn)
     {
+
       mgpa_ = mgpa;
+
       rand_w     = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w2_);
       rand_radiu = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w3_);
-      rand_h     = uniform_real_distribution<double>(0.8 * mpa_.basic_mp_.map_size_(2), mpa_.basic_mp_.map_size_(2));
+      rand_h     = uniform_real_distribution<double>(mgpa_.w2_, mpa_.basic_mp_.map_size_(2));
       eng.seed(seed);
       generate(if_dyn);
     }
 
     void generate(bool dyn_mode)
     {
-      int cylinder_grids, circle_grids, gate_grids, ellip_grids, poly_grids, sphere_grids;
       // rand vel for each obs
       if(dyn_mode){
         rand_vx = uniform_real_distribution<double>(-vel_h(0), vel_h(0));
@@ -402,43 +354,29 @@ namespace param_env {
       grid_map_.setUniRand(eng);
 
       int all_grids = ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));
-      if(!dyn_mode) {
-          cylinder_grids = ceil(all_grids * mgpa_.static_cylinder_ratio_);
-          circle_grids = ceil(all_grids * mgpa_.static_circle_ratio_);
-          gate_grids = ceil(all_grids * mgpa_.static_gate_ratio_);
-          ellip_grids = ceil(all_grids * mgpa_.static_ellip_ratio_);
-          poly_grids = ceil(all_grids * mgpa_.static_poly_ratio_);
-          sphere_grids = ceil(all_grids * mgpa_.static_ball_ratio_);
-      }else{
-          cylinder_grids = ceil(all_grids * mgpa_.dyn_cylinder_ratio_);
-          circle_grids = ceil(all_grids * mgpa_.dyn_circle_ratio_);
-          gate_grids = ceil(all_grids * mgpa_.dyn_gate_ratio_);
-          ellip_grids = ceil(all_grids * mgpa_.dyn_ellip_ratio_);
-          poly_grids = ceil(all_grids * mgpa_.dyn_poly_ratio_);
-          sphere_grids = ceil(all_grids * mgpa_.dyn_ball_ratio_);
-      }
+      int cylinder_grids = ceil(all_grids * mgpa_.cylinder_ratio_);
+      int circle_grids   = ceil(all_grids * mgpa_.circle_ratio_);
+      int gate_grids     = ceil(all_grids * mgpa_.gate_ratio_);
+      int ellip_grids    = ceil(all_grids * mgpa_.ellip_ratio_);
+      int poly_grids     = ceil(all_grids * mgpa_.poly_ratio_);
+
       Eigen::Vector3d bound;
-      Eigen::Vector3d cpt, goal; // center point, goal point
+      Eigen::Vector3d cpt; // center points, object points
 
       // generate cylinders
       int cur_grids = 0;
       double w, h;
-      int count = 0;
       while (cur_grids < cylinder_grids)
       {
         grid_map_.getUniRandPos(cpt);
-        grid_map_.getUniRandPos(goal);
-
+       
         h = rand_h(eng);
-        w = 0.1 + rand_w(eng);
+        w = 0.2 + rand_w(eng);
         param_env::Cylinder cylinder(cpt, w, h);
 
-        Eigen::Vector3d v_zero = Eigen::Vector3d::Zero(3,1);
-        Eigen::Vector3d a_zero = Eigen::Vector3d::Zero(3,1);
-        cylinder.setVel(v_zero);
-        cylinder.setAcc(a_zero);
-        cylinder.setGoal(goal);
-        cur_grids += updatePts(cylinder, dyn_mode); // update pcl
+        vel(0) = rand_vx(eng); vel(1) = rand_vy(eng); vel(2) = 0;
+        cylinder.setVel(vel);
+        cur_grids += updatePts(cylinder); // update pcl
         geo_map_.add(cylinder);
 
         if(dyn_mode){
@@ -448,34 +386,6 @@ namespace param_env {
       cylinder_grids = cur_grids;
 
       cur_grids = 0;
-
-      // sphere, can be dynamic obstacle
-      double r;
-      while (cur_grids < sphere_grids)
-      {
-          grid_map_.getUniRandPos(cpt);
-          grid_map_.getUniRandPos(goal);
-          goal(2) = cpt(2) + 0.1;
-          r = rand_radiu(eng);
-          bound << r, r, r;
-          param_env::Sphere ball(cpt, r);
-
-          Eigen::Vector3d v_zero = Eigen::Vector3d::Zero(3,1);
-          Eigen::Vector3d a_zero = Eigen::Vector3d::Zero(3,1);
-          ball.init(cpt, bound , r);
-          ball.setVel(v_zero);
-          ball.setAcc(a_zero);
-          ball.setGoal(goal);
-          cur_grids += updatePts(ball, dyn_mode); // update pcl
-          geo_map_.add(ball);
-
-          if(dyn_mode){
-              ball_list.push_back(ball);  // add dyn_obs_list
-          }
-        }
-        sphere_grids = cur_grids;
-
-        cur_grids = 0;
       // generate circle obs
       while (cur_grids < circle_grids)
       {
@@ -496,6 +406,7 @@ namespace param_env {
         }
       }
       circle_grids = cur_grids;
+
 
       cur_grids = 0;
       // generate circle obs
@@ -524,28 +435,15 @@ namespace param_env {
       while (cur_grids < ellip_grids)
       {
         grid_map_.getUniRandPos(cpt);
-        grid_map_.getUniRandPos(goal);
-
-        cpt(2) = 1.5;
-        goal(2) = cpt(2);
         Eigen::Vector3d euler_angle;
-        if(dyn_mode){
-            euler_angle << 0, 0, 0;
-        }else{
-            euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
-        }
-        // make it high
-        bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng) + 2;
+        euler_angle << rand_theta(eng), rand_theta(eng), rand_theta(eng);
+        bound << rand_radiu(eng), rand_radiu(eng), rand_radiu(eng);
         param_env::Ellipsoid ellip;
         ellip.init(cpt, bound, euler_angle);
 
-        Eigen::Vector3d v_zero = Eigen::Vector3d::Zero(3,1);
-        Eigen::Vector3d a_zero = Eigen::Vector3d::Zero(3,1);
-        ellip.setVel(v_zero);
-        ellip.setAcc(a_zero);
-        ellip.setGoal(goal);
-
-        cur_grids += updatePts(ellip, dyn_mode);
+        vel(0) = rand_vx(eng); vel(1) = rand_vy(eng); vel(2) = 0;
+        ellip.setVel(vel);
+        cur_grids += updatePts(ellip);
         geo_map_.add(ellip);
         if(dyn_mode){
           ellip_list.push_back(ellip); // add dyn_obs_list
@@ -582,8 +480,7 @@ namespace param_env {
       std::cout << "+++ circles    : " << 100 * float(circle_grids) / float(all_grids)   << "%           +++" << std::endl;
       std::cout << "+++ gates      : " << 100 * float(gate_grids) / float(all_grids)     << "%           +++" << std::endl;
       std::cout << "+++ ellipsoids : " << 100 * float(ellip_grids) / float(all_grids)    << "%           +++" << std::endl;
-      std::cout << "+++ polytopes  : " << 100 * float(poly_grids) / float(all_grids)     << "%           +++" << std::endl;
-      std::cout << "+++ spheres    : " << 100 * float(sphere_grids) / float(all_grids)   << "%           +++" << std::endl;
+      std::cout << "+++ polytopes  : " << 100 * float(poly_grids) / float(all_grids)     << "%           +++" << std::endl;    
       std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
     }
 
@@ -599,159 +496,84 @@ namespace param_env {
     }
 
 
-    /* Get polynomial traj for each obstacle(ellipsoid for now) */
-    void GetObsPolyTraj(){
-        Eigen::MatrixXd pos = Eigen::MatrixXd::Zero(3,2); // consider only start and goal point
-        Eigen::Vector3d start_vel, start_acc, end_vel, end_acc, cpt ,goal;
-
-        double max_vel_ = vel_bound.norm(), max_acc_ = acc_bound.norm();
-        double duration;
-        for(auto & c : ellip_list){
-            // get start pos, vel, acc
-            c.getCenter(cpt);
-            c.getVel(start_vel);
-            c.getAcc(start_acc);
-            c.getGoal(goal);
-
-            // get goal pos vel acc
-            end_vel << 0,0,0;
-            end_acc << 0,0,0;
-
-            double dist = (cpt - goal).norm();
-            duration = pow(max_vel_, 2) / max_acc_ > dist ?
-                       sqrt(dist / max_acc_)  : (dist - pow(max_vel_, 2) / max_acc_) /max_vel_ + 2 * max_vel_ / max_acc_;
-
-            PolynomialTraj obs_traj = PolynomialTraj::one_segment_traj_gen_3_order(cpt, start_vel, start_acc, goal, end_vel, end_acc, duration);
-            c.setTraj(obs_traj);
-            c.traj_start_time = ros::Time::now().toSec();
-            c.traj_duration = duration;
-            c.obs_init_time = ros::Time::now().toSec();
-
-            PolynomialTraj back_obs_traj = PolynomialTraj::one_segment_traj_gen_3_order(goal, start_vel, start_acc, cpt, end_vel, end_acc, duration);
-            c.setBackTraj(back_obs_traj);
-            c.back_traj_start_time = c.traj_start_time + c.traj_duration;
-            c.back_traj_duration = duration;
+    // update grid map
+    void pcl2grid(){
+      Eigen::Vector3d pt = Eigen::Vector3d::Zero(3,1);
+      int count = 0;
+      for (auto ob_pt: cloudMap_.points)
+        {
+          pt(0) = ob_pt.x; pt(1) = ob_pt.y; pt(2) = ob_pt.z;
+          if (!grid_map_.isInMap(pt))
+          {
+            continue;
+          }
+          grid_map_.setOcc(pt);
+          count++;
         }
+      std::cout << "GRID OBS: " << count << std::endl;
     }
 
-    /* get pts on obs's traj w.r.t. world time, this is just for rviz visualization */
-    void dyn_generate_traj(double t) {
-        moving_cloudMap_.clear();
-        Eigen::Vector3d cur_cpt, next_cpt, dist;
-        PolynomialTraj poly;
-        double t_cur;
+    // Helper function to update dynamic object movement and point cloud
+    template <typename ShapeT>
+    void update_moving_shape(ShapeT &c, double dt,
+                            double x_l, double x_h,
+                            double y_l, double y_h,
+                            double z_l, double z_h,
+                            pcl::PointCloud<pcl::PointXYZ> &cloudMap_)
+    {
+        Eigen::Vector3d cur_cpt = Eigen::Vector3d::Zero();
+        Eigen::Vector3d next_cpt = Eigen::Vector3d::Zero();
+        Eigen::Vector3d vel = Eigen::Vector3d::Zero();
+        Eigen::Vector3d dist = Eigen::Vector3d::Zero();
 
-        for (auto &c: ellip_list) {
-            c.getCenter(cur_cpt);
-            //cout << cur_cpt.transpose() << endl;
-            if(t > c.back_traj_start_time + c.back_traj_duration){
-                c.traj_start_time += c.traj_duration + c.back_traj_duration;
-                c.back_traj_start_time = c.traj_start_time + c.traj_duration;
-            }
+        c.getCenter(cur_cpt);
+        c.getVel(vel);
 
-            if(t <= c.traj_duration + c.traj_start_time){
-                c.getTraj(poly);
-                t_cur = t - c.traj_start_time;
-            }
-            else if(t <= c.back_traj_start_time + c.back_traj_duration){
-                c.getBackTraj(poly);
-                t_cur = t - c.back_traj_start_time;
-            }
+        // Update position based on velocity and time step
+        next_cpt = cur_cpt + dt * vel;
+        next_cpt(2) = cur_cpt(2); // Z stays constant
 
-            next_cpt = poly.evaluate(t_cur);
+        // Boundary check and bounce
+        auto bounce_axis = [](double &pos, double &vel, double min_v, double max_v) {
+            if (pos < min_v) { pos = min_v; vel *= -1; }
+            if (pos > max_v) { pos = max_v; vel *= -1; }
+        };
+        bounce_axis(next_cpt(0), vel(0), x_l, x_h);
+        bounce_axis(next_cpt(1), vel(1), y_l, y_h);
+        bounce_axis(next_cpt(2), vel(2), z_l, z_h);
 
-            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
-            dist = next_cpt - cur_cpt;
-            move_clouds(c, cloud_obs, dist);
-            *(c.cloud) = *cloud_obs;
-            moving_cloudMap_ += *cloud_obs;
-            c.setCenter(next_cpt);
-        }
+        // Apply updated position and velocity
+        c.setCenter(next_cpt);
+        c.setVel(vel);
+
+        // Move associated point cloud
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_obs(new pcl::PointCloud<pcl::PointXYZ>);
+        dist = next_cpt - cur_cpt;
+        move_clouds(c, cloud_obs, dist);
+
+        *(c.cloud) = *cloud_obs;   // update pcl
+        cloudMap_ += *cloud_obs;   // add pcl to global map
     }
 
+    // Main dynamic movement update function
+    void dyn_generate(double dt)
+    {
+        // Movement bounds
+        double x_l = -10, y_l = -10, z_l = 0;
+        double x_h = 10,  y_h = 10,  z_h = 5;
 
-      // just for ellip obs for now
-      void SendObsTrajInfo(plan_env::Obsinfo &info, double horizons, double time_now) {
-          info.heights.clear();
-          info.radiuss.clear();
-          info.s0.clear();
-          info.s1.clear();
-          info.s2.clear();
+        // Update all shape lists
+        for (auto &c : cir_list)   update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
+        for (auto &c : ellip_list) update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
+        for (auto &c : cyl_list)   update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
+        for (auto &c : poly_list)  update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
+        for (auto &c : gate_list)  update_moving_shape(c, dt, x_l, x_h, y_l, y_h, z_l, z_h, cloudMap_);
 
-          info.send_msg_time.clear();
-          info.coeff.clear();
-          info.horizons.clear();
-          info.trajs_start_time.clear();
-          info.durations.clear();
-
-          vector<vector<double>> cof;
-          vector<double> ts;
-          vector<int> which_poly;
-          PolynomialTraj poly;
-
-
-          info.header.stamp = ros::Time::now();
-
-          info.shape = "ellips";
-          info.layouts[0] = ellip_list.size();   // number of obs
-          info.layouts[1] = 4;  // n polys, 4 coeff, 3 dim
-          info.layouts[2] = 3;  // n polys, 4 coeff, 3 dim
-          Eigen::Vector3d pt;
-          Eigen::Matrix3d S;
-
-          for (int i = 0; i < ellip_list.size(); i++) {
-              which_poly.clear();
-              info.horizons.push_back(horizons);
-              info.send_msg_time.push_back(time_now); // current world time
-              S = ellip_list[i].getS();
-              info.s0.push_back(S(0,0));
-              info.s1.push_back(S(1,1));
-              info.s2.push_back(S(2,2));
-
-              // find out which polys currently in and will end
-              double t_in_period = std::fmod(time_now - ellip_list[i].obs_init_time, ellip_list[i].traj_duration + ellip_list[i].back_traj_duration);
-              int bina = 0;
-              double t_start = 0.0;
-              if (t_in_period <= ellip_list[i].traj_duration) {
-                  t_start = ellip_list[i].traj_start_time;
-                  bina = 0;
-              } else {
-                  t_start = ellip_list[i].back_traj_start_time;
-                  bina = 1;
-              }
-              while (t_start <= horizons + time_now) {
-                  which_poly.push_back(bina);
-                  info.trajs_start_time.push_back(t_start);
-                  if (bina == 0) {
-                      t_start += ellip_list[i].traj_duration;
-                      info.durations.push_back(ellip_list[i].traj_duration);
-                  }
-                  else {
-                      t_start += ellip_list[i].back_traj_duration;
-                      info.durations.push_back(ellip_list[i].back_traj_duration);
-                  }
-                  bina = (bina == 0) ? 1 : 0;
-              }
-              info.poly_nums_each_obs.push_back(which_poly.size());
-
-              for (int dim = 0; dim <= 2; dim++) {
-                  for(int k = 0; k < which_poly.size(); k++){
-                      if(which_poly[k] == 0){
-                          ellip_list[i].getTraj(poly);
-                      }else{
-                          ellip_list[i].getBackTraj(poly);
-                      }
-                      cof = poly.getCoef(dim);
-                      for (int seg = 0; seg < cof.size(); seg++) {
-                          for (int j = 0; j < cof[seg].size(); j++) {
-                              info.coeff.push_back(cof[seg][j]);
-                          }
-                      }
-                  }
-              }
-         }
-     }
+        // Update grid obstacle map
+        pcl2grid();
+    }
   };
+
 }
 
 #endif

@@ -14,8 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   pcl_conversions
-  message_generation
-  plan_env
 )
 
 include_directories(
@@ -29,18 +27,15 @@ include_directories(
 
 catkin_package(
  INCLUDE_DIRS include
- LIBRARIES
- CATKIN_DEPENDS message_runtime plan_env
+ LIBRARIES param_env
 #  DEPENDS system_lib
 )
-
 
 add_executable (structure_map src/structure_map.cpp)
 
 target_link_libraries(structure_map
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES})
-add_dependencies(structure_map ${catkin_EXPORTED_TARGETS})
 
 
 add_executable (read_grid_map src/read_grid_map.cpp)

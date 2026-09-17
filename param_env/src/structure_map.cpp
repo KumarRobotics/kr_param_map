@@ -83,7 +83,7 @@ void clearCloud()
 {
     std::cout << "start clear points, the cloudMap.size(): " << cloudMap.size() << std::endl;
 
-    const double radius_sq = 4.0; // 2.0^2
+    const double radius_sq = 2.0;
     const bool use3D = clear_3d;
 
     cloudMap.erase(
@@ -125,12 +125,13 @@ void pubSensedPoints() {
   }
   pcl::toROSMsg(cloudMap, globalMap_pcd);
   globalMap_pcd.header.frame_id = _frame_id;
+  globalMap_pcd.header.stamp = ros::Time::now();
   _all_map_cloud_pub.publish(globalMap_pcd);
   if (_save_map) {
-    pcl::io::savePCDFileASCII(_dataset_path + std::string("pt") +
-                                  std::to_string(_initial_num + _num) +
-                                  std::string(".pcd"),
-                              cloudMap);
+    pcl::io::savePCDFileBinary(_dataset_path + std::string("pt") +
+                                   std::to_string(_initial_num + _num) +
+                                   std::string(".pcd"),
+                               cloudMap);
 
   }
   return;

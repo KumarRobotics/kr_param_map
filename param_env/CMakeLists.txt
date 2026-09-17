@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 project(param_env)
 
 set(CMAKE_CXX_STANDARD 17)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
 
 find_package(PCL 1.7 REQUIRED)
 find_package(Eigen3 REQUIRED)

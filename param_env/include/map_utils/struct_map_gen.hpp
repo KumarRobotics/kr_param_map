@@ -81,14 +81,17 @@ namespace param_env {
       int widNum3 = ceil(bound(2) / mpa_.resolution_);
 
       std::vector<Eigen::Vector3d> total_pts;
+      total_pts.reserve(8 * widNum1 * widNum2 * widNum3);
 
       for (int r = -widNum1; r < widNum1; r++)
+      {
+        double rx = r * mpa_.resolution_;
         for (int s = -widNum2; s < widNum2; s++)
+        {
+          double sy = s * mpa_.resolution_;
           for (int t = -widNum3; t < widNum3; t++)
           {
-            ob_pt = cpt + Eigen::Vector3d(r * mpa_.resolution_,
-                                          s * mpa_.resolution_,
-                                          t * mpa_.resolution_);      
+            ob_pt = cpt + Eigen::Vector3d(rx, sy, t * mpa_.resolution_);
             if (grid_map_.isOcc(ob_pt) != 0)
             {
               continue;
@@ -110,6 +113,8 @@ namespace param_env {
 
             geo_rep.cloud->push_back(pt_random); // get cloud at 1st iter
           }
+        }
+      }
 
       if (mgpa_.add_noise_)
       {
@@ -160,19 +165,25 @@ namespace param_env {
       int widNum2 = ceil(rect(2) / mpa_.resolution_);
       int width   = ceil(rect(0) / mpa_.resolution_);
       std::vector<Eigen::Vector3d> total_pts;
+      total_pts.reserve(4 * 2 * width * widNum1 * widNum2);
       Eigen::MatrixXd signs(2, 4);
       signs <<  1, -1, 1, -1,
                 1, 1, -1, -1;
       for (int t = - width; t < width; t++)
+      {
+        double tx = t * mpa_.resolution_;
         for (int r = 0 ; r < widNum1; r++)
+        {
+          double ry = r * mpa_.resolution_;
           for (int s = 0; s < widNum2; s++)
           {
+            double sz = s * mpa_.resolution_;
             for (int i = 0; i < 4; i++)
             {
-              
-              ob_pt = cpt + rot * Eigen::Vector3d(t * mpa_.resolution_,
-                                            r * signs(0, i) * mpa_.resolution_,
-                                            s * signs(1, i) * mpa_.resolution_);
+
+              ob_pt = cpt + rot * Eigen::Vector3d(tx,
+                                            ry * signs(0, i),
+                                            sz * signs(1, i));
 
               if (!geo_rep.isInside(ob_pt))
               {
@@ -194,8 +205,10 @@ namespace param_env {
 
               geo_rep.cloud->push_back(pt_random); // get cloud at 1st iter
             }
-          }       
-  
+          }
+        }
+      }
+
 
       if (mgpa_.add_noise_)
       {
@@ -321,11 +334,27 @@ namespace param_env {
 
       eng.seed(seed);
 
+      // Generate random ratios directly
       mgpa_.cylinder_ratio_ = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-      mgpa_.circle_ratio_   = 0.1  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-      mgpa_.gate_ratio_     = 0.1  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-      mgpa_.ellip_ratio_    = 0.5  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
-      mgpa_.poly_ratio_     = 0.5  * mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.circle_ratio_   = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.gate_ratio_     = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.ellip_ratio_    = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+      mgpa_.poly_ratio_     = mgpa_.w2_ * rand_w(eng) * rand_w(eng);
+
+      // Scale down if total exceeds mgpa_.w2_
+      double total_ratio = mgpa_.cylinder_ratio_ + mgpa_.circle_ratio_ + 
+                          mgpa_.gate_ratio_ + mgpa_.ellip_ratio_ + mgpa_.poly_ratio_;
+      
+      if (total_ratio > mgpa_.w2_ * 0.5)
+      {
+        double scale = (mgpa_.w2_ * 0.5) / total_ratio;
+        mgpa_.cylinder_ratio_ *= scale;
+        mgpa_.circle_ratio_   *= scale;
+        mgpa_.gate_ratio_     *= scale;
+        mgpa_.ellip_ratio_    *= scale;
+        mgpa_.poly_ratio_     *= scale;
+      }
+
 
       generate(if_dyn); // false
     }
@@ -337,7 +366,7 @@ namespace param_env {
 
       rand_w     = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w2_);
       rand_radiu = uniform_real_distribution<double>(mgpa_.w1_, mgpa_.w3_);
-      rand_h     = uniform_real_distribution<double>(mgpa_.w2_, mpa_.basic_mp_.map_size_(2));
+      rand_h     = uniform_real_distribution<double>(0.5 * mpa_.basic_mp_.map_size_(2), mpa_.basic_mp_.map_size_(2));
       eng.seed(seed);
       generate(if_dyn);
     }
@@ -354,6 +383,8 @@ namespace param_env {
       grid_map_.setUniRand(eng);
 
       int all_grids = ceil(mpa_.basic_mp_.map_volume_ / std::pow(mpa_.resolution_, 3));
+      cloudMap_.points.reserve(cloudMap_.points.size() + all_grids);
+
       int cylinder_grids = ceil(all_grids * mgpa_.cylinder_ratio_);
       int circle_grids   = ceil(all_grids * mgpa_.circle_ratio_);
       int gate_grids     = ceil(all_grids * mgpa_.gate_ratio_);

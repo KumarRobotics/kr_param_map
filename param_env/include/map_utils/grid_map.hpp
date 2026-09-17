@@ -386,10 +386,11 @@ namespace param_env
     // set occupancy to the map
     void setOcc(const Eigen::Vector3i &id)
     {
-      Eigen::Vector3d pos;
-      indexToPos(id, pos);
       if (!isInMap(id))
         return;
+
+      Eigen::Vector3d pos;
+      indexToPos(id, pos);
 
       occupancy_buffer_[getBufferCnt(id)] = mp_.clamp_max_log_;
       obs_pts.push_back(pos);
@@ -595,9 +596,9 @@ namespace param_env
     // check if the pos index is in map range
     bool isInMap(const Eigen::Vector3i &id)
     {
-      Eigen::Vector3d pos;
-      indexToPos(id, pos);
-      return isInMap(pos);
+      return id(0) >= 0 && id(0) < mp_.map_grid_size_(0) &&
+             id(1) >= 0 && id(1) < mp_.map_grid_size_(1) &&
+             id(2) >= 0 && id(2) < mp_.map_grid_size_(2);
     }
 
     double getGridVal(double p)

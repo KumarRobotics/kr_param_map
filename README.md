@@ -1,6 +1,15 @@
 # Kumar Lab Parameterized Map
 
+<p align="left">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD-blue.svg" alt="License"></a>
+  <a href="https://wiki.ros.org/noetic"><img src="https://img.shields.io/badge/ROS-Noetic-22314E?logo=ros&logoColor=white" alt="ROS Noetic"></a>
+  <a href="https://github.com/KumarRobotics/kr_param_map/tree/ros2"><img src="https://img.shields.io/badge/ROS2-Humble-22314E?logo=ros&logoColor=white" alt="ROS 2 Humble"></a>
+  <a href="https://doi.org/10.1109/ICRA57147.2024.10610207"><img src="https://img.shields.io/badge/paper-ICRA 2024-blue.svg" alt="ICRA 2024 paper"></a>
+  <a href="https://www.youtube.com/watch?v=xLHHDw3IQr4"><img src="https://img.shields.io/badge/video-YouTube-red?logo=youtube&logoColor=white" alt="YouTube"></a>
+</p>
+
 All in one! It's a revolution in map parameterization and representation for motion planning.
+
 
 
 ## Branches Overview

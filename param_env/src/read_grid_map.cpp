@@ -46,6 +46,9 @@ param_env::BasicMapParams _mpa;
 double _inflate_radius = 0.0;
 std::filesystem::directory_iterator file_iter;
 bool _auto_gen = false, _use_folder = false, _publish_grid_centers = false;
+bool _add_noise = false;
+double _noise_std = 0.05;
+double _noise_prob = 0.1;
 
 //*** image params ***/
 int _negate;
@@ -127,6 +130,9 @@ void read_img(std::string& path) {
   }
   SDL_FreeSurface(img);
   toPcsMsg();
+
+  std::cout << "[read_img] Read image map with " << cloudMap.points.size() << " points." << std::endl;
+
 }
 
 /*** read ros bag ***/
@@ -189,8 +195,39 @@ void gen_pcs(float bound = 50, int num = 10000) {
   toPcsMsg();
 }
 
+void addNoiseToCloud() {
+  if (!_add_noise || cloudMap.points.empty()) {
+    return;
+  }
+
+  std::default_random_engine rng(time(NULL));
+  std::normal_distribution<double> dist(0.0, _noise_std);
+  std::uniform_real_distribution<double> prob(0.0, 1.0);
+
+  std::vector<pcl::PointXYZ> extra_pts;
+  extra_pts.reserve(static_cast<size_t>(cloudMap.points.size() * _noise_prob));
+
+  for (const auto& pt : cloudMap.points) {
+    if (prob(rng) > _noise_prob) {
+      continue;
+    }
+    Eigen::Vector3d noisy_pos(pt.x + dist(rng), pt.y + dist(rng), pt.z + dist(rng));
+    if (!_grid_map.isInMap(noisy_pos)) {
+      continue;
+    }
+    extra_pts.emplace_back(noisy_pos(0), noisy_pos(1), noisy_pos(2));
+  }
+
+  if (!extra_pts.empty()) {
+    cloudMap.points.insert(cloudMap.points.end(), extra_pts.begin(), extra_pts.end());
+  }
+}
+
 void pubSensedPoints() {
+
   globalCloud_pcd.header.frame_id = _frame_id;
+  //timestamp
+  globalCloud_pcd.header.stamp = ros::Time::now();
   _all_cloud_pub.publish(globalCloud_pcd);
 
   if (_publish_grid_centers) {
@@ -204,6 +241,11 @@ void pubSensedPoints() {
 }
 
 void readMap(std::string file_path) {
+  //clear globalCloud_pcd
+  globalCloud_pcd = sensor_msgs::PointCloud2();
+  std::cout << "[readMap] Reading map from: " << file_path << std::endl;
+
+  
   switch (_mode) {
     case 0:
       gen_pcs();
@@ -229,6 +271,8 @@ void readMap(std::string file_path) {
       break;
   }
 
+  addNoiseToCloud();
+  toPcsMsg();
   pubSensedPoints();
   return;
 }
@@ -291,6 +335,9 @@ int main(int argc, char** argv) {
 
   nh.param("map/auto_change", _auto_gen, false);
   nh.param("map/publish_grid_centers", _publish_grid_centers, false);
+  nh.param("params/add_noise", _add_noise, false);
+  nh.param("params/noise_std", _noise_std, 0.05);
+  nh.param("params/noise_prob", _noise_prob, 0.1);
 
   // set up basic parameters for grid map
   _grid_mpa.basic_mp_ = _mpa;
@@ -330,12 +377,13 @@ int main(int argc, char** argv) {
     readMap(file_path);
   }
 
-  ros::Rate loop_rate(10.0);
+  ros::Rate loop_rate(5.0);
   bool success = true;
 
   while (ros::ok()) {
     if (_auto_gen && _use_folder && success) {
       success = nextFile();
+      std::cout << "[main] Auto gen next map." << std::endl;
     }
 
     ros::spinOnce();

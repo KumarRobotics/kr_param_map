@@ -111,11 +111,29 @@ namespace param_env
 
     // h-representation = [outter_normal^T, pt^T]^T
     Eigen::MatrixXd hPoly_;
+    // precomputed plane form for isInside: row i = normal_i^T, b0_(i) = normal_i . point_i
+    Eigen::MatrixX3d A_;
+    Eigen::VectorXd b0_;
     Eigen::Vector3d bd_; // the bounding as -+ d
     Eigen::Vector3d cpt_;
 
     //params for dyn
     Eigen::Vector3d v;
+
+    // build the batched plane representation (A_, b0_) from hPoly_
+    void buildPlanes()
+    {
+      int faces = hPoly_.cols();
+      A_.resize(faces, 3);
+      b0_.resize(faces);
+      for (int i = 0; i < faces; i++)
+      {
+        Eigen::Vector3d p_ = hPoly_.col(i).head<3>();
+        Eigen::Vector3d n_ = hPoly_.col(i).tail<3>();
+        A_.row(i) = n_.transpose();
+        b0_(i) = n_.dot(p_);
+      }
+    }
 
   public:
 
@@ -123,7 +141,7 @@ namespace param_env
 
     Polyhedron() {}
 
-    Polyhedron(const Eigen::MatrixXd &hPoly) : hPoly_(hPoly) {}
+    Polyhedron(const Eigen::MatrixXd &hPoly) : hPoly_(hPoly) { buildPlanes(); }
 
     ~Polyhedron() {}
 
@@ -131,17 +149,12 @@ namespace param_env
     bool isInside(Eigen::Vector3d &pt,
                    const double epsilon = 1.0e-6)
     {
-      Eigen::Vector3d p_, n_;
-      for (int i = 0; i < hPoly_.cols(); i++)
+      if (A_.rows() == 0)
       {
-        p_ = hPoly_.col(i).head<3>();
-        n_ = hPoly_.col(i).tail<3>();
-        if ( n_.dot(pt- p_) > epsilon)
-        {
-          return false;
-        }
+        return true;
       }
-      return true;
+      // equivalent to: for all i, normal_i . (pt - point_i) <= epsilon
+      return (A_ * pt - b0_).maxCoeff() <= epsilon;
     }
 
     // for point cloud visualization
@@ -208,6 +221,7 @@ namespace param_env
       }
 
       hPoly_ = hPoly;
+      buildPlanes();
       //std::cout << "hPoly_ is  " << hPoly_ << std::endl;
       bd_  = bound;
       cpt_ = cpt;
@@ -319,6 +333,7 @@ namespace param_env
   private:
   
     Eigen::Matrix3d E_; // 3*3 matrix
+    Eigen::Matrix3d Einv_; // cached inverse of E_
     Eigen::Vector3d d_;
     Eigen::Vector3d bd_; // the bounding as -+ d
 
@@ -328,15 +343,15 @@ namespace param_env
   public:
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
     Ellipsoid() = default;
-    
-    Ellipsoid(const Eigen::Matrix3d &E, Eigen::Vector3d d) : E_(E), d_(d) {}
+
+    Ellipsoid(const Eigen::Matrix3d &E, Eigen::Vector3d d) : E_(E), Einv_(E.inverse()), d_(d) {}
 
     ~Ellipsoid() {}
 
     // Check if the point is inside
     bool isInside(const Eigen::Vector3d &pt)
     {
-      return (E_.inverse() * (pt - d_)).norm() <= 1.0;
+      return (Einv_ * (pt - d_)).norm() <= 1.0;
     }
 
 
@@ -353,9 +368,10 @@ namespace param_env
                     0.0, bound(1), 0.0,
                     0.0, 0.0, bound(2);
 
-      E_  = R * coeff_mat * R.transpose();
-      d_  = cpt;
-      bd_ = bound;
+      E_    = R * coeff_mat * R.transpose();
+      Einv_ = E_.inverse();
+      d_    = cpt;
+      bd_   = bound;
 
       cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     }
